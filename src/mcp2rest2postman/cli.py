@@ -14,7 +14,7 @@ from . import __version__
 from .client import DEFAULT_PROTOCOL_VERSION, HttpTransport, MCPError, StdioTransport, Transport
 from .config import load_server
 from .discovery import ServerSnapshot, discover
-from .postman import GeneratorOptions, build_collection_and_environment
+from .postman import GeneratorOptions, build_collection, build_environment
 from .schema_values import required_and_optional
 
 DEFAULT_BASE_URL = "http://localhost:3000/mcp"
@@ -104,13 +104,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_source_args(gen, allow_snapshot=True)
     out = gen.add_argument_group("output")
     out.add_argument("-o", "--output", help="collection file ('-' for stdout). Default: <server>.postman_collection.json")
-    out.add_argument(
-        "--environment-out",
-        metavar="FILE",
-        help="Postman environment file (always written) with baseUrl, header variables and, with "
-        "--body-variables, the argument values. Default: next to the collection, "
-        "<name>.postman_environment.json",
-    )
+    out.add_argument("--environment-out", metavar="FILE", help="also write a Postman environment with baseUrl and headers")
     out.add_argument("--snapshot-out", metavar="FILE", help="also save the discovered server snapshot (JSON)")
     out.add_argument("--name", help="collection name (default: '<server title> (MCP)')")
     out.add_argument(
@@ -123,12 +117,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="store -H values in the collection (by default only empty variables are created; "
         "beware of committing secrets)",
-    )
-    out.add_argument(
-        "--body-variables",
-        action="store_true",
-        help="put tool/prompt argument values in environment variables ({{tool_arg}}) instead of "
-        "hard-coding them in the request bodies",
     )
     sel = gen.add_argument_group("content")
     sel.add_argument("--include-tool", action="append", default=[], metavar="GLOB", help="only these tools (repeatable)")
@@ -254,36 +242,20 @@ def cmd_generate(args: argparse.Namespace) -> int:
         include_resources=not args.no_resources,
         include_prompts=not args.no_prompts,
         teardown=not args.no_teardown,
-        body_variables=args.body_variables,
     )
-    collection, environment = build_collection_and_environment(
-        snapshot, options, f"{snapshot.server_name} (MCP)"
-    )
+    collection = build_collection(snapshot, options)
     output = args.output or f"{_slug(snapshot.server_name)}.postman_collection.json"
-    env_output = args.environment_out or environment_path(output, snapshot.server_name)
     _write_json(output, collection)
-    _write_json(env_output, environment)
     if args.snapshot_out:
         snapshot.save(args.snapshot_out)
+    if args.environment_out:
+        _write_json(args.environment_out, build_environment(options, f"{snapshot.server_name} (MCP)"))
     requests = _count_requests(collection["item"])
     if output != "-":
         log(f"Wrote {output} ({requests} requests)")
-    if env_output != "-":
-        log(f"Wrote {env_output} ({len(environment['values'])} variables)")
     for warning in snapshot.warnings:
         log(f"warning: {warning}")
     return 0
-
-
-def environment_path(collection_path: str, server_name: str) -> str:
-    """Default environment file, next to the collection."""
-    if collection_path == "-":
-        return f"{_slug(server_name)}.postman_environment.json"
-    path = Path(collection_path)
-    for suffix in (".postman_collection.json", ".json"):
-        if path.name.endswith(suffix):
-            return str(path.with_name(path.name[: -len(suffix)] + ".postman_environment.json"))
-    return str(path.with_name(path.name + ".postman_environment.json"))
 
 
 def _count_requests(items: List[Dict[str, Any]]) -> int:

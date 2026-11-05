@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp2rest2postman"
-version = "0.2.0"
+version = "0.1.0"
 description = "Convert an MCP server (Streamable HTTP or stdio) into a Postman collection with contract, required and optional attribute tests."
 readme = "README.md"
 license = "Apache-2.0"

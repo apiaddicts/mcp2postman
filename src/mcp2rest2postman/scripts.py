@@ -32,7 +32,7 @@ const mcp = (() => {
     }
   }
   let requestId;
-  try { requestId = JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).id; } catch (e) { requestId = undefined; }
+  try { requestId = JSON.parse(pm.request.body.raw).id; } catch (e) { requestId = undefined; }
   const flat = [].concat(...messages.map((m) => (Array.isArray(m) ? m : [m])));
   const isResponse = (m) => m && typeof m === 'object' && ('result' in m || 'error' in m);
   const message = flat.find((m) => isResponse(m) && (requestId === undefined || m.id === requestId)) || null;

@@ -18,16 +18,13 @@ NEWMAN = shutil.which("newman")
 pytestmark = pytest.mark.skipif(not (NEWMAN or POSTMAN), reason="newman / postman CLI not installed")
 
 
-def run_collection(path, report, environment=None):
-    env_args = ["-e", str(environment)] if environment else []
+def run_collection(path, report):
     if NEWMAN:
-        cmd = [NEWMAN, "run", str(path), *env_args, "-r", "json", "--reporter-json-export", str(report)]
+        cmd = [NEWMAN, "run", str(path), "-r", "json", "--reporter-json-export", str(report)]
         subprocess.run(cmd, capture_output=True, timeout=120)
         run = json.loads(report.read_text())["run"]
         return run["stats"]["assertions"]["total"], len(run["failures"])
-    proc = subprocess.run(
-        [POSTMAN, "collection", "run", str(path), *env_args], capture_output=True, text=True, timeout=120
-    )
+    proc = subprocess.run([POSTMAN, "collection", "run", str(path)], capture_output=True, text=True, timeout=120)
     return None, proc.returncode
 
 
@@ -51,14 +48,3 @@ def test_drift_is_detected(tmp_path, json_url):
     assert main(["generate", "-q", "--from-snapshot", str(snap), "--base-url", json_url, "-o", str(col)]) == 0
     _, failures = run_collection(col, tmp_path / "r.json")
     assert failures > 0
-
-
-def test_body_variables_collection_passes_with_environment(tmp_path, http_url):
-    col = tmp_path / "c.postman_collection.json"
-    env = tmp_path / "c.postman_environment.json"
-    assert main(["generate", "-q", "--url", http_url, "--body-variables", "-o", str(col)]) == 0
-    assert "{{add_a}}" in col.read_text()
-    total, failures = run_collection(col, tmp_path / "r.json", environment=env)
-    assert failures == 0
-    if total is not None:
-        assert total > 100
