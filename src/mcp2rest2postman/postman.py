@@ -7,7 +7,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from . import __version__, scripts
 from . import mcp_schemas as ms
@@ -46,6 +46,40 @@ class GeneratorOptions:
     include_resources: bool = True
     include_prompts: bool = True
     teardown: bool = True
+    #: Move tool / prompt argument values out of the request bodies into
+    #: ``{{tool_arg}}`` environment variables.
+    body_variables: bool = False
+
+
+class BodyVar:
+    """Placeholder for an argument value that lives in an environment variable."""
+
+    __slots__ = ("name",)
+
+    def __init__(self, name: str):
+        self.name = name
+
+
+_SENTINEL = "__mcp2rest2postman_var__"
+_SENTINEL_RE = re.compile(r'"' + _SENTINEL + r'([A-Za-z0-9_]+)(:s)?"')
+
+
+def variable_name(*parts: str) -> str:
+    """``("create_user", "e-mail")`` -> ``create_user_e_mail``."""
+    joined = "_".join(re.sub(r"[^A-Za-z0-9]+", "_", str(p)).strip("_") for p in parts if str(p))
+    return joined or "value"
+
+
+def environment_value(value: Any) -> str:
+    """Text stored in the environment so that substitution yields valid JSON.
+
+    Strings are used inside quotes in the body (``"{{var}}"``), so only their
+    JSON escaping is stored; any other type is inserted unquoted
+    (``{{var}}``) and stored as its JSON literal (``42``, ``true``, ``["a"]``).
+    """
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False)[1:-1]
+    return json.dumps(value, ensure_ascii=False)
 
 
 def header_variable(name: str) -> str:
@@ -58,6 +92,8 @@ class CollectionBuilder:
         self.snapshot = snapshot
         self.options = options or GeneratorOptions()
         self._next_id = 1
+        #: Environment variables created for request bodies: name -> value.
+        self.body_variables: Dict[str, Any] = {}
 
     # ------------------------------------------------------------------ utils
     def _id(self) -> int:
@@ -76,6 +112,43 @@ class CollectionBuilder:
         for name in self.options.headers:
             headers.append({"key": name, "value": "{{" + header_variable(name) + "}}"})
         return headers
+
+    def _var(self, value: Any, *parts: str) -> BodyVar:
+        """Register *value* under a variable named after *parts* and return a placeholder.
+
+        The same name always maps to the same value; a different value for an
+        existing name gets a numeric suffix.
+        """
+        base = variable_name(*parts)
+        name, n = base, 2
+        while name in self.body_variables and self.body_variables[name] != value:
+            name, n = f"{base}_{n}", n + 1
+        self.body_variables[name] = value
+        return BodyVar(name)
+
+    def _vars(self, arguments: Dict[str, Any], prefix: List[str], literal: Any = ()) -> Dict[str, Any]:
+        """Replace argument values by variables (keys in *literal* keep their value)."""
+        if not self.options.body_variables:
+            return arguments
+        return {k: (v if k in literal else self._var(v, *prefix, k)) for k, v in arguments.items()}
+
+    def _raw_body(self, payload: Dict[str, Any]) -> str:
+        values = self.body_variables
+
+        def encode(obj: Any) -> Any:
+            if isinstance(obj, BodyVar):
+                suffix = ":s" if isinstance(values[obj.name], str) else ""
+                return f"{_SENTINEL}{obj.name}{suffix}"
+            if isinstance(obj, dict):
+                return {k: encode(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [encode(v) for v in obj]
+            return obj
+
+        raw = json.dumps(encode(payload), indent=2, ensure_ascii=False)
+        return _SENTINEL_RE.sub(
+            lambda m: '"{{' + m.group(1) + '}}"' if m.group(2) else "{{" + m.group(1) + "}}", raw
+        )
 
     def _url(self) -> Dict[str, Any]:
         return {"raw": "{{baseUrl}}", "host": ["{{baseUrl}}"]}
@@ -104,7 +177,7 @@ class CollectionBuilder:
                 "url": self._url(),
                 "body": {
                     "mode": "raw",
-                    "raw": json.dumps(payload, indent=2, ensure_ascii=False),
+                    "raw": self._raw_body(payload),
                     "options": {"raw": {"language": "json"}},
                 },
             },
@@ -227,11 +300,13 @@ class CollectionBuilder:
                     built[key] = value
             return built
 
-        def call(label: str, arguments: Dict[str, Any], tests: List[str], doc: str) -> Dict[str, Any]:
+        def call(
+            label: str, arguments: Dict[str, Any], tests: List[str], doc: str, literal: Any = ()
+        ) -> Dict[str, Any]:
             return self._request(
                 f"{name} - {label}",
                 "tools/call",
-                {"name": name, "arguments": arguments},
+                {"name": name, "arguments": self._vars(arguments, [name], literal)},
                 tests,
                 doc,
             )
@@ -295,6 +370,7 @@ class CollectionBuilder:
                                 f"wrong type for '{key}' ({why})", ms.CALL_TOOL_RESULT, ms.JSONRPC_ERROR
                             ),
                             f"`{key}` receives {why}: the server must reject the call.",
+                            literal={key},
                         )
                     )
         description = self._tool_description(tool, required, optional, props)
@@ -399,12 +475,13 @@ class CollectionBuilder:
             required = [a["name"] for a in arguments if a.get("required")]
             optional = [a["name"] for a in arguments if not a.get("required")]
             all_args = {a: f"example-{a}" for a in required + optional}
+            pv = ["prompt", str(pname)]
             ok = scripts._lines(scripts.HELPERS, scripts.jsonrpc_success(ms.GET_PROMPT_RESULT, "GetPromptResult"))
             items.append(
                 self._request(
                     f"prompts/get {pname} - all arguments",
                     "prompts/get",
-                    {"name": pname, "arguments": all_args},
+                    {"name": pname, "arguments": self._vars(all_args, pv)},
                     ok,
                     str(prompt.get("description") or ""),
                 )
@@ -414,7 +491,7 @@ class CollectionBuilder:
                     self._request(
                         f"prompts/get {pname} - required arguments only",
                         "prompts/get",
-                        {"name": pname, "arguments": {a: all_args[a] for a in required}},
+                        {"name": pname, "arguments": self._vars({a: all_args[a] for a in required}, pv)},
                         ok,
                     )
                 )
@@ -424,7 +501,7 @@ class CollectionBuilder:
                         self._request(
                             f"prompts/get {pname} - missing required '{arg}' -> error",
                             "prompts/get",
-                            {"name": pname, "arguments": {k: v for k, v in all_args.items() if k != arg}},
+                            {"name": pname, "arguments": self._vars({k: v for k, v in all_args.items() if k != arg}, pv)},
                             scripts.rejection_tests(
                                 f"missing required argument '{arg}'",
                                 ms.GET_PROMPT_RESULT,
@@ -522,12 +599,24 @@ class CollectionBuilder:
 
 
 def build_collection(snapshot: ServerSnapshot, options: Optional[GeneratorOptions] = None) -> Dict[str, Any]:
-    """Convenience wrapper around :class:`CollectionBuilder`."""
+    """Convenience wrapper around :class:`CollectionBuilder` (collection only)."""
     return CollectionBuilder(snapshot, options).build()
 
 
-def build_environment(options: GeneratorOptions, name: str) -> Dict[str, Any]:
-    """A Postman environment holding the target URL and custom header values."""
+def build_collection_and_environment(
+    snapshot: ServerSnapshot, options: Optional[GeneratorOptions] = None, environment_name: Optional[str] = None
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Build the collection and the matching environment (with any body variables)."""
+    builder = CollectionBuilder(snapshot, options)
+    collection = builder.build()
+    name = environment_name or collection["info"]["name"]
+    return collection, build_environment(builder.options, name, builder.body_variables)
+
+
+def build_environment(
+    options: GeneratorOptions, name: str, body_variables: Optional[Mapping[str, Any]] = None
+) -> Dict[str, Any]:
+    """A Postman environment with ``baseUrl``, custom headers and body variables."""
     values = [{"key": "baseUrl", "value": options.base_url, "type": "default", "enabled": True}]
     for header, value in options.headers.items():
         values.append(
@@ -538,6 +627,8 @@ def build_environment(options: GeneratorOptions, name: str) -> Dict[str, Any]:
                 "enabled": True,
             }
         )
+    for key, value in (body_variables or {}).items():
+        values.append({"key": key, "value": environment_value(value), "type": "default", "enabled": True})
     return {
         "id": str(uuid.uuid5(_NAMESPACE, "env:" + name)),
         "name": name,

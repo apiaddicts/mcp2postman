@@ -38,10 +38,50 @@ def test_generate_from_stdio_and_snapshot(tmp_path):
     assert a["item"] == b["item"]
 
 
-def test_generate_to_stdout(json_url, capsys):
+def test_generate_to_stdout(json_url, capsys, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     assert main(["generate", "-q", "--url", json_url, "-o", "-", "--no-negative-tests"]) == 0
     col = json.loads(capsys.readouterr().out)
     assert not any("->" in n and "add" in n for n in by_name(col))
+    # the environment is still written, in the working directory
+    env = json.loads((tmp_path / "demo-mcp-server.postman_environment.json").read_text())
+    assert env["values"][0] == {"key": "baseUrl", "value": json_url, "type": "default", "enabled": True}
+
+
+def test_environment_always_written_next_to_collection(tmp_path, json_url):
+    out = tmp_path / "out" / "my.postman_collection.json"
+    out.parent.mkdir()
+    assert main(["generate", "-q", "--url", json_url, "-o", str(out)]) == 0
+    env = json.loads((tmp_path / "out" / "my.postman_environment.json").read_text())
+    assert {v["key"]: v["value"] for v in env["values"]} == {"baseUrl": json_url}
+
+
+def test_body_variables(tmp_path, json_url):
+    values = tmp_path / "v.json"
+    values.write_text(json.dumps({"greet": {"name": 'Ada "the first"'}}))
+    out = tmp_path / "c.json"
+    assert main(["generate", "-q", "--url", json_url, "--body-variables", "--values", str(values), "-o", str(out)]) == 0
+    col = by_name(json.loads(out.read_text()))
+    env = {v["key"]: v["value"] for v in json.loads((tmp_path / "c.postman_environment.json").read_text())["values"]}
+    raw = col["add - valid, all attributes"]["request"]["body"]["raw"]
+    assert '"a": {{add_a}}' in raw and '"b": {{add_b}}' in raw
+    assert env["add_a"] == "1" and env["add_b"] == "1"
+    raw = col["greet - valid, all attributes"]["request"]["body"]["raw"]
+    assert '"name": "{{greet_name}}"' in raw and '"excited": {{greet_excited}}' in raw
+    assert env["greet_name"] == 'Ada \\"the first\\"'  # stored JSON-escaped
+    assert env["search_items_filters"] == '{"inStock": true}'
+    assert env["prompt_summarize_text"] == "example-text"
+    # wrong-type tests keep their deliberately invalid literal
+    raw = col["add - wrong type for required 'a' -> error"]["request"]["body"]["raw"]
+    assert '"a": "not-a-valid-value"' in raw and "{{add_b}}" in raw
+    # substituting the environment gives back valid JSON with the original types
+    for item in col.values():
+        body = item["request"].get("body")
+        if body:
+            text = body["raw"]
+            for key, value in env.items():
+                text = text.replace("{{" + key + "}}", value)
+            json.loads(text)
 
 
 def test_values_file(tmp_path, json_url):

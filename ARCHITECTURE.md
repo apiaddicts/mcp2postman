@@ -40,7 +40,7 @@ without a running server.
 | `schema_values.py` | JSON Schema helpers. `sample_value` / `sample_object` create valid samples. They handle local `$ref`, `allOf` (merged), `anyOf` and `oneOf` (first branch that isn't null), `const`, `default`, `examples`, `enum`, `format`, string length, `pattern` (tries known candidates), numeric bounds and `multipleOf`, and array sizes. `wrong_type_value` picks a value of a type the schema doesn't accept. `sanitize_for_ajv` makes schemas compile in Postman's sandbox. `required_and_optional` splits the properties of an object. |
 | `mcp_schemas.py` | Draft-07 schemas for MCP results (`InitializeResult`, `CallToolResult` and others) and for JSON-RPC errors. They're strict on the fields the spec requires and allow anything else, so servers on newer protocol revisions still pass. |
 | `scripts.py` | JavaScript templates for the Postman test scripts. |
-| `postman.py` | `CollectionBuilder` creates the folders, requests, variables and environment from a snapshot and `GeneratorOptions`. |
+| `postman.py` | `CollectionBuilder` creates the folders, requests and variables from a snapshot and `GeneratorOptions`. With `body_variables`, it records each argument value it moves out of a body. `build_collection_and_environment` returns the collection and the matching environment (`baseUrl`, header variables, body variables). |
 
 ## Key design decisions
 
@@ -91,6 +91,29 @@ those. `sanitize_for_ajv` removes `$schema` and `$id` and drops `format`
 values that Ajv doesn't know. It leaves *property names* alone, even a
 property called `$schema`.
 
+### The environment file and body variables
+`generate` always writes an environment next to the collection. It holds
+`baseUrl`, one variable per custom header and, with `--body-variables`, one
+variable per argument value. `baseUrl` also stays as a collection variable as
+a fallback, but Postman gives environment values precedence.
+
+With `body_variables`, `CollectionBuilder._vars()` replaces each top-level
+argument with a `BodyVar` placeholder named `<tool>_<arg>` or
+`prompt_<prompt>_<arg>`, and `_var()` records the value. The same name with
+the same value is reused. A different value under an existing name gets a
+numeric suffix, so one variable never has two meanings. `_raw_body()`
+serializes the payload with sentinel strings and then rewrites them:
+
+* string values become `"{{name}}"`. The environment stores the JSON-escaped
+  text without the surrounding quotes.
+* any other value becomes an unquoted `{{name}}`. The environment stores its
+  JSON literal, so after substitution the server gets the original JSON type.
+
+Wrong-type requests pass their key as `literal`, so the deliberately invalid
+value stays in the body. Because the raw body is only valid JSON after
+substitution, the test helper reads the request `id` from
+`pm.variables.replaceIn(pm.request.body.raw)`.
+
 ### Positive vs. negative test semantics
 | Request kind | Passes when |
 |---|---|
@@ -117,7 +140,7 @@ type. An unconstrained `{}` accepts any value.
 | Layer | File | What it covers |
 |---|---|---|
 | Unit | `tests/test_schema_values.py` | Sample and wrong-type generation, `$ref` and combinators, Ajv sanitizing |
-| Unit | `tests/test_postman.py` | Collection structure, variants for required and optional attributes, options, headers and secrets, determinism |
+| Unit | `tests/test_postman.py` | Collection structure, variants for required and optional attributes, options, headers and secrets, body variables and environment, determinism |
 | Integration | `tests/test_client.py` | HTTP (JSON and SSE) and stdio transports against `examples/demo_server.py`, snapshot round trip |
 | Integration | `tests/test_cli.py` | CLI flags, output files, exit codes |
-| End to end | `tests/test_e2e_postman.py` | Runs generated collections with **newman** or the **Postman CLI** against the demo server. All assertions must pass, and drift must be detected. Skipped when neither runner is installed. |
+| End to end | `tests/test_e2e_postman.py` | Runs generated collections with **newman** or the **Postman CLI** against the demo server. All assertions must pass, including with `--body-variables` and its environment, and drift must be detected. Skipped when neither runner is installed. |

@@ -3,7 +3,15 @@ import json
 import pytest
 
 from mcp2rest2postman.discovery import ServerSnapshot
-from mcp2rest2postman.postman import POSTMAN_SCHEMA, GeneratorOptions, build_collection, build_environment
+from mcp2rest2postman.postman import (
+    POSTMAN_SCHEMA,
+    GeneratorOptions,
+    build_collection,
+    build_collection_and_environment,
+    build_environment,
+    environment_value,
+    variable_name,
+)
 
 from helpers import body, by_name, flatten
 
@@ -153,3 +161,39 @@ def test_custom_headers_become_variables():
     assert "s3cret" in json.dumps(build_collection(SNAPSHOT, opts))
     env = build_environment(opts, "e")
     assert {v["key"] for v in env["values"]} == {"baseUrl", "header_authorization"}
+
+
+def test_body_variables_off_by_default(collection):
+    assert "{{create_user_" not in json.dumps(collection)
+
+
+def test_body_variables_collection_and_environment():
+    col, env = build_collection_and_environment(SNAPSHOT, GeneratorOptions(body_variables=True), "env")
+    items = by_name(col)
+    raw = items["create_user - valid, all attributes"]["request"]["body"]["raw"]
+    assert '"email": "{{create_user_email}}"' in raw and '"age": {{create_user_age}}' in raw
+    values = {v["key"]: v["value"] for v in env["values"]}
+    assert values["baseUrl"] == "http://localhost:3000/mcp"
+    assert values["create_user_email"] == "user@example.com"
+    assert values["create_user_age"] == "18"
+    assert values["prompt_p_x"] == "example-x"
+    # the required-only and single-optional variants reuse the same variables
+    raw = items["create_user - valid, required + optional 'admin'"]["request"]["body"]["raw"]
+    assert "{{create_user_admin}}" in raw and "{{create_user_email}}" in raw
+    assert not any(k.endswith("_2") for k in values)
+    # the test script can still read the JSON-RPC id once variables are resolved
+    script = "\n".join(items["create_user - valid, all attributes"]["event"][0]["script"]["exec"])
+    assert "pm.variables.replaceIn(pm.request.body.raw)" in script
+
+
+def test_variable_helpers():
+    assert variable_name("my-tool", "e.mail") == "my_tool_e_mail"
+    assert environment_value("a\"b") == 'a\\"b'
+    assert environment_value(3) == "3"
+    assert environment_value([1, "x"]) == '[1, "x"]'
+    assert environment_value(None) == "null"
+
+
+def test_environment_without_body_variables_still_has_base_url():
+    env = build_environment(GeneratorOptions(base_url="http://x/mcp"), "e")
+    assert env["values"] == [{"key": "baseUrl", "value": "http://x/mcp", "type": "default", "enabled": True}]
