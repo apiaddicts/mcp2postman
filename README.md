@@ -85,16 +85,18 @@ use those values.
 ### `generate`
 
 ```text
-mcp2rest2postman generate (--url URL | --stdio COMMAND | --from-snapshot FILE) [options]
+mcp2rest2postman generate (--url URL | --stdio COMMAND | --config FILE | --from-snapshot FILE) [options]
 ```
 
 | Option | Description |
 |---|---|
 | `--url URL` | Streamable HTTP endpoint, for example `http://localhost:3000/mcp` |
 | `--stdio "CMD"` | Command that starts a stdio server, for example `"npx -y @modelcontextprotocol/server-everything"` |
+| `--config FILE` | Read the server (URL or command, args, env, cwd) and its auth headers from an `mcp-config.json`. See [MCP config files](#mcp-config-files) |
+| `--server NAME` | Server to use when the config file defines several |
 | `--from-snapshot FILE` | Generate offline from a snapshot saved earlier |
-| `-H 'Name: value'` | Extra HTTP header (repeatable). Typical use: `-H 'Authorization: Bearer …'` |
-| `--env KEY=VALUE` | Environment variable for the stdio server (repeatable) |
+| `-H 'Name: value'` | Extra HTTP header (repeatable). Typical use: `-H 'Authorization: Bearer …'`. Overrides a config header with the same name |
+| `--env KEY=VALUE` | Environment variable for the stdio server (repeatable). Overrides the config `env` |
 | `-o FILE` | Collection output file (`-` for stdout). The default is `<server>.postman_collection.json` |
 | `--environment-out FILE` | Also write a Postman environment with `baseUrl` and the header variables |
 | `--snapshot-out FILE` | Also save the discovered server snapshot |
@@ -114,7 +116,7 @@ mcp2rest2postman generate (--url URL | --stdio COMMAND | --from-snapshot FILE) [
 ### `inspect`
 
 ```text
-mcp2rest2postman inspect (--url URL | --stdio COMMAND) [-H ...] [--json]
+mcp2rest2postman inspect (--url URL | --stdio COMMAND | --config FILE [--server NAME]) [-H ...] [--json]
 ```
 
 Prints the server's tools (required attributes are marked with `*`), resources
@@ -137,6 +139,48 @@ it in a values file:
 ```bash
 mcp2rest2postman generate --url … --values examples/values.json
 ```
+
+### MCP config files
+
+Reuse the `mcp-config.json` you already give to Claude Desktop, Claude Code
+(`.mcp.json`), Cursor or VS Code (`.vscode/mcp.json`) instead of repeating the
+URL, command and credentials on the command line:
+
+```json
+{
+  "mcpServers": {
+    "corecast": {
+      "type": "http",
+      "url": "https://aigw-wso2.apiquality.io/mcp-corecast/1/mcp",
+      "headers": { "Authorization": "Bearer ${CORECAST_TOKEN}" }
+    },
+    "local": {
+      "command": "python",
+      "args": ["examples/demo_server.py", "--stdio"],
+      "env": { "API_KEY": "${API_KEY}" }
+    }
+  }
+}
+```
+
+```bash
+export CORECAST_TOKEN=…
+mcp2rest2postman generate --config mcp-config.json --server corecast -o corecast.postman_collection.json
+```
+
+* Accepted layouts: `{"mcpServers": {…}}`, VS Code's `{"servers": {…}, "inputs": […]}`,
+  or a single server object. `--server` is only needed when there are several.
+* HTTP servers use `url`, `headers` and an optional `type` (`http` or
+  `streamable-http`). The legacy `sse` type is rejected. stdio servers use
+  `command`, `args`, `env` and `cwd` (relative to the config file).
+* Keep secrets out of the file with `${VAR}`, `${env:VAR}` or `${VAR:-default}`
+  (read from the environment, and an unset variable is an error). VS Code
+  `${input:id}` values are prompted for on the terminal, hidden when the input
+  has `"password": true`.
+* Config headers are handled like `-H` headers: they're sent during discovery
+  and become empty `{{header_…}}` variables in the collection (see
+  [Secrets](#secrets)). The snapshot only records the file and server name,
+  never the header or env values.
 
 ### stdio servers
 
@@ -232,7 +276,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how the code is organized.
 
 * The legacy HTTP+SSE transport (protocol 2024-11-05, separate `/sse` and
   `/messages` endpoints) isn't supported. Use Streamable HTTP or stdio.
-* OAuth flows aren't automated. Get a token yourself and pass it with `-H`.
+* OAuth flows aren't automated (an `oauth` block in a config file is ignored).
+  Get a token yourself and pass it with `-H` or a `${VAR}` config header.
 * Generated values satisfy common JSON Schema constraints. A complex `pattern`
   or semantic constraints, such as an ID that has to exist, may need `--values`.
 * The `tools/list` drift checks only look at the first page when the server
