@@ -1,0 +1,4 @@
+{
+  "add": {"a": 40, "b": 2},
+  "greet": {"name": "Ada", "language": "es"}
+}

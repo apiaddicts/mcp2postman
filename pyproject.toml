@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp2rest2postman"
+version = "0.1.0"
+description = "Convert an MCP server (Streamable HTTP or stdio) into a Postman collection with contract, required and optional attribute tests."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE.md"]
+requires-python = ">=3.9"
+authors = [{ name = "APIAddicts" }]
+keywords = ["mcp", "model-context-protocol", "postman", "testing", "json-rpc", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[project.scripts]
+mcp2rest2postman = "mcp2rest2postman.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/apiaddicts/mcp2rest2postman"
+Issues = "https://github.com/apiaddicts/mcp2rest2postman/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 130
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mcp2rest2postman"]
+known-local-folder = ["helpers", "conftest", "demo_server"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/mcp2rest2postman/scripts.py" = ["E501"]

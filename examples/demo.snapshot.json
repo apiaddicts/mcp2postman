@@ -1,0 +1,151 @@
+{
+  "protocol_version": "2025-06-18",
+  "server_info": {
+    "name": "demo-mcp-server",
+    "title": "Demo MCP Server",
+    "version": "1.0.0"
+  },
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    },
+    "resources": {},
+    "prompts": {}
+  },
+  "instructions": "Demo server for mcp2rest2postman.",
+  "tools": [
+    {
+      "name": "add",
+      "title": "Add two numbers",
+      "description": "Returns the sum of a and b.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "number",
+            "description": "First addend"
+          },
+          "b": {
+            "type": "number",
+            "description": "Second addend"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sum": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sum"
+        ]
+      }
+    },
+    {
+      "name": "greet",
+      "description": "Greets someone.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "default": "en"
+          },
+          "excited": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "search_items",
+      "description": "Searches the demo catalogue.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "inStock": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "demo://readme",
+      "name": "readme",
+      "mimeType": "text/plain",
+      "description": "Readme"
+    }
+  ],
+  "resource_templates": [
+    {
+      "uriTemplate": "demo://items/{id}",
+      "name": "item",
+      "mimeType": "application/json"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "summarize",
+      "description": "Summarise a text.",
+      "arguments": [
+        {
+          "name": "text",
+          "description": "Text to summarise",
+          "required": true
+        },
+        {
+          "name": "style",
+          "description": "bullet or prose",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "source": {
+    "url": "http://localhost:8765/mcp"
+  },
+  "warnings": [],
+  "format": "mcp2rest2postman/snapshot@1"
+}

@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.postman_collection.json
+*.postman_environment.json
+!examples/*.postman_collection.json
+!examples/*.postman_environment.json
