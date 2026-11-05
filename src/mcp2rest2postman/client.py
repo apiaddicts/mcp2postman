@@ -29,6 +29,7 @@ from . import __version__
 
 DEFAULT_PROTOCOL_VERSION = "2025-06-18"
 CLIENT_INFO = {"name": "mcp2rest2postman", "version": __version__}
+USER_AGENT = f"mcp2rest2postman/{__version__}"
 
 
 class MCPError(Exception):
@@ -130,6 +131,9 @@ class HttpTransport(Transport):
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
+            # urllib's default "Python-urllib/x.y" is blocked by many WAFs
+            # (e.g. Cloudflare error 1010); identify ourselves instead.
+            "User-Agent": USER_AGENT,
         }
         headers.update(self.extra_headers)
         if self.session_id:

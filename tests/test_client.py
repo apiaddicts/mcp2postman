@@ -62,3 +62,12 @@ def test_snapshot_roundtrip(tmp_path, json_url):
 def test_snapshot_rejects_unknown_format():
     with pytest.raises(ValueError):
         ServerSnapshot.from_dict({"format": "other", "protocol_version": "x"})
+
+
+def test_http_sends_custom_user_agent_overridable():
+    from mcp2rest2postman.client import USER_AGENT, HttpTransport
+
+    assert HttpTransport("http://x")._headers()["User-Agent"] == USER_AGENT
+    assert not USER_AGENT.startswith("Python-urllib")
+    custom = HttpTransport("http://x", headers={"User-Agent": "me/1"})
+    assert custom._headers()["User-Agent"] == "me/1"

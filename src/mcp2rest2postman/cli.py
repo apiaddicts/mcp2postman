@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import __version__
 from .client import DEFAULT_PROTOCOL_VERSION, HttpTransport, MCPError, StdioTransport, Transport
+from .config import load_server
 from .discovery import ServerSnapshot, discover
 from .postman import GeneratorOptions, build_collection, build_environment
 from .schema_values import required_and_optional
@@ -44,8 +46,19 @@ def _add_source_args(parser: argparse.ArgumentParser, allow_snapshot: bool) -> N
         metavar="COMMAND",
         help="command that starts a stdio MCP server, e.g. \"npx -y @modelcontextprotocol/server-everything\"",
     )
+    group.add_argument(
+        "--config",
+        metavar="FILE",
+        help="mcp-config.json (Claude/Cursor 'mcpServers' or VS Code 'servers' format); "
+        "url/command, args, env and headers (auth) are taken from it",
+    )
     if allow_snapshot:
         group.add_argument("--from-snapshot", metavar="FILE", help="reuse a snapshot saved with --snapshot-out")
+    src.add_argument(
+        "--server",
+        metavar="NAME",
+        help="server to use from --config (required when the file defines several)",
+    )
     src.add_argument(
         "-H",
         "--header",
@@ -54,7 +67,8 @@ def _add_source_args(parser: argparse.ArgumentParser, allow_snapshot: bool) -> N
         type=_parse_header,
         default=[],
         metavar="'NAME: VALUE'",
-        help="extra HTTP header sent to the server (repeatable), e.g. -H 'Authorization: Bearer xxx'",
+        help="extra HTTP header sent to the server (repeatable), e.g. -H 'Authorization: Bearer xxx'; "
+        "overrides a header of the same name from --config",
     )
     src.add_argument(
         "--env",
@@ -63,7 +77,7 @@ def _add_source_args(parser: argparse.ArgumentParser, allow_snapshot: bool) -> N
         type=_parse_env,
         default=[],
         metavar="KEY=VALUE",
-        help="environment variable for the --stdio server (repeatable)",
+        help="environment variable for the stdio server (repeatable); overrides --config env",
     )
     src.add_argument(
         "--protocol-version",
@@ -133,19 +147,52 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _merge(base: Dict[str, str], override: Sequence[Tuple[str, str]], case_insensitive: bool) -> List[Tuple[str, str]]:
+    merged = dict(base)
+    for key, value in override:
+        if case_insensitive:
+            for existing in [k for k in merged if k.lower() == key.lower()]:
+                del merged[existing]
+        merged[key] = value
+    return list(merged.items())
+
+
+def _apply_config(args: argparse.Namespace) -> None:
+    """Resolve --config/--server into --url/--stdio, headers, env and cwd."""
+    args.cwd = None
+    if args.server and not args.config:
+        raise ValueError("--server requires --config")
+    if not args.config:
+        return
+    server = load_server(args.config, args.server)
+    args.config_server = server.name
+    if server.is_http:
+        args.url = server.url
+        args.headers = _merge(server.headers, args.headers, case_insensitive=True)
+    else:
+        args.stdio = server.argv
+        args.env = _merge(server.env, args.env, case_insensitive=False)
+        args.cwd = server.cwd
+
+
 def _transport(args: argparse.Namespace) -> Transport:
     headers = dict(args.headers)
     if args.url:
         return HttpTransport(args.url, headers=headers, timeout=args.timeout)
     if headers:
         print("warning: -H headers are not used to talk to a stdio server (only added to the collection)", file=sys.stderr)
-    return StdioTransport(args.stdio, env=dict(args.env), timeout=args.timeout)
+    return StdioTransport(args.stdio, env=dict(args.env), cwd=args.cwd, timeout=args.timeout)
 
 
 def _snapshot(args: argparse.Namespace, log) -> ServerSnapshot:
     if getattr(args, "from_snapshot", None):
         return ServerSnapshot.load(args.from_snapshot)
-    source: Dict[str, Any] = {"url": args.url} if args.url else {"stdio": args.stdio}
+    _apply_config(args)
+    stdio = shlex.join(args.stdio) if isinstance(args.stdio, list) else args.stdio
+    source: Dict[str, Any] = {"url": args.url} if args.url else {"stdio": stdio}
+    if args.config:
+        # Only the location: env values and headers may hold secrets.
+        source["config"] = {"file": args.config, "server": args.config_server}
     with _transport(args) as transport:
         return discover(transport, args.protocol_version, source, log=log)
 
