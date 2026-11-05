@@ -23,6 +23,9 @@ MCP server ──(initialize, tools/list, resources/list, prompts/list)──▶
 * **Validates responses** with JSON Schema: `InitializeResult`, `CallToolResult`,
   `structuredContent` against the tool's `outputSchema`, `ReadResourceResult`,
   `GetPromptResult`, and the JSON-RPC error shape.
+* **Always writes a Postman environment** next to the collection, with
+  `baseUrl` and the header variables. With `--body-variables`, the tool and
+  prompt argument values move from the request bodies into that environment.
 * **Detects drift.** `tools/list` and `prompts/list` fail when a tool or prompt
   disappears or its input schema changes after the collection was generated.
 * Has no runtime dependencies (Python ≥ 3.9 standard library only).
@@ -47,13 +50,12 @@ Try it with the bundled demo server:
 python examples/demo_server.py --http --port 8765 &
 
 mcp2rest2postman inspect  --url http://localhost:8765/mcp
-mcp2rest2postman generate --url http://localhost:8765/mcp \
-    -o demo.postman_collection.json \
-    --environment-out demo.postman_environment.json
+mcp2rest2postman generate --url http://localhost:8765/mcp -o demo.postman_collection.json
+# -> demo.postman_collection.json + demo.postman_environment.json
 
 # run it (any of these)
-postman collection run demo.postman_collection.json
-newman run demo.postman_collection.json
+postman collection run demo.postman_collection.json -e demo.postman_environment.json
+newman run demo.postman_collection.json -e demo.postman_environment.json
 ```
 
 Output of `inspect`:
@@ -98,7 +100,8 @@ mcp2rest2postman generate (--url URL | --stdio COMMAND | --config FILE | --from-
 | `-H 'Name: value'` | Extra HTTP header (repeatable). Typical use: `-H 'Authorization: Bearer …'`. Overrides a config header with the same name |
 | `--env KEY=VALUE` | Environment variable for the stdio server (repeatable). Overrides the config `env` |
 | `-o FILE` | Collection output file (`-` for stdout). The default is `<server>.postman_collection.json` |
-| `--environment-out FILE` | Also write a Postman environment with `baseUrl` and the header variables |
+| `--environment-out FILE` | Path of the Postman environment, which is always written. It holds `baseUrl`, the header variables and, with `--body-variables`, the argument values. The default is the collection path with `.postman_environment.json` (`<server>.postman_environment.json` when `-o -`) |
+| `--body-variables` | Put tool and prompt argument values in environment variables (`{{tool_arg}}`) instead of writing them into the request bodies. See [Body variables](#body-variables) |
 | `--snapshot-out FILE` | Also save the discovered server snapshot |
 | `--base-url URL` | Value of `{{baseUrl}}`. The default is `--url`, or `http://localhost:3000/mcp` for stdio |
 | `--name NAME` | Collection name |
@@ -139,6 +142,65 @@ it in a values file:
 ```bash
 mcp2rest2postman generate --url … --values examples/values.json
 ```
+
+### Body variables
+
+By default, argument values are written straight into each request body. With
+`--body-variables`, every top-level tool argument becomes the variable
+`{{<tool>_<argument>}}`, and every prompt argument becomes
+`{{prompt_<prompt>_<argument>}}`. The values go into the environment file, so
+you can change test data without regenerating the collection or editing
+requests.
+
+```bash
+mcp2rest2postman generate --url http://localhost:8765/mcp --body-variables \
+    --values examples/values.json -o demo.postman_collection.json
+```
+
+Request body:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "add",
+    "arguments": {
+      "a": {{add_a}},
+      "b": {{add_b}}
+    }
+  }
+}
+```
+
+Environment (`demo.postman_environment.json`):
+
+| key | value |
+|---|---|
+| `baseUrl` | `http://localhost:8765/mcp` |
+| `add_a` | `40` |
+| `add_b` | `2` |
+| `greet_name` | `Ada` |
+| `search_items_filters` | `{"inStock": true}` |
+| `prompt_summarize_text` | `example-text` |
+
+How values are stored:
+
+* **Strings** are used inside quotes (`"{{greet_name}}"`). The environment
+  holds the text with JSON escaping, so `"` becomes `\"`.
+* **Numbers, booleans, null, arrays and objects** are used without quotes
+  (`{{add_a}}`) and stored as JSON literals (`40`, `true`, `["a"]`,
+  `{"inStock": true}`), so the server still receives the right JSON type.
+* The valid variants of a tool (all attributes, required only, one per
+  optional attribute) and its *missing required* requests share the same
+  variables. *Wrong type* requests keep their deliberately invalid value as a
+  literal.
+* `--values` sets the initial values in the environment.
+
+Raw bodies containing unquoted `{{…}}` aren't valid JSON until Postman
+substitutes the variables, so **always run the collection with its
+environment** (`-e`).
 
 ### MCP config files
 
@@ -214,10 +276,10 @@ To store the values in the collection and environment files, use
 ```bash
 # once: discover and store the contract
 mcp2rest2postman generate --url $MCP_URL --snapshot-out mcp.snapshot.json -o mcp.postman_collection.json
-git add mcp.snapshot.json mcp.postman_collection.json
+git add mcp.snapshot.json mcp.postman_collection.json mcp.postman_environment.json
 
 # in CI: run the collection against the deployed server
-postman collection run mcp.postman_collection.json --env-var "baseUrl=$MCP_URL"
+postman collection run mcp.postman_collection.json -e mcp.postman_environment.json --env-var "baseUrl=$MCP_URL"
 ```
 
 If someone removes a tool or changes its `inputSchema`, the `tools/list`
