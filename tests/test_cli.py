@@ -105,3 +105,12 @@ def test_errors_have_exit_codes(tmp_path, capsys):
     assert main(["inspect", "--url", "http://127.0.0.1:9/mcp", "--timeout", "2"]) == 2
     assert main(["generate", "--from-snapshot", str(tmp_path / "missing.json")]) == 1
     assert "error:" in capsys.readouterr().err
+
+
+def test_protocol_versions_option(tmp_path, json_url, capsys):
+    out = tmp_path / "c.json"
+    assert main(["generate", "-q", "--url", json_url, "--protocol-versions", "2025-11-25", "-o", str(out)]) == 0
+    folder = next(f for f in json.loads(out.read_text())["item"] if f["name"] == "91 Protocol versions")
+    assert len(folder["item"]) == 2
+    assert main(["generate", "-q", "--url", json_url, "--protocol-versions", "none", "-o", str(out)]) == 0
+    assert "91 Protocol versions" not in [f["name"] for f in json.loads(out.read_text())["item"]]

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from . import __version__, scripts
 from . import mcp_schemas as ms
+from .client import SUPPORTED_PROTOCOL_VERSIONS
 from .discovery import ServerSnapshot
 from .schema_values import (
     SchemaResolver,
@@ -43,6 +44,8 @@ class GeneratorOptions:
     wrong_type_tests: bool = True
     optional_variants: bool = True
     protocol_tests: bool = True
+    #: Versions checked in the "91 Protocol versions" folder (empty: none).
+    protocol_versions: List[str] = field(default_factory=lambda: list(SUPPORTED_PROTOCOL_VERSIONS))
     include_resources: bool = True
     include_prompts: bool = True
     teardown: bool = True
@@ -526,6 +529,45 @@ class CollectionBuilder:
         ]
         return self._folder("90 Protocol", items, "Generic JSON-RPC / MCP conformance checks.")
 
+    #: Proposed in the negative negotiation check: no server supports it.
+    UNKNOWN_PROTOCOL_VERSION = "1999-01-01"
+
+    def protocol_versions(self) -> Optional[Dict[str, Any]]:
+        versions = self.options.protocol_versions
+        if not self.options.protocol_tests or not versions:
+            return None
+        negotiated = self.snapshot.protocol_version
+        known = list(dict.fromkeys(list(SUPPORTED_PROTOCOL_VERSIONS) + list(versions)))
+        items = []
+        for version in list(versions) + [self.UNKNOWN_PROTOCOL_VERSION]:
+            unknown = version == self.UNKNOWN_PROTOCOL_VERSION
+            params = {
+                "protocolVersion": version,
+                "capabilities": {},
+                "clientInfo": {"name": "mcp2rest2postman", "version": __version__},
+            }
+            items.append(
+                self._request(
+                    f"initialize with unknown version {version}" if unknown else f"initialize with {version}",
+                    "initialize",
+                    params,
+                    scripts.protocol_version_tests(
+                        ms.INITIALIZE_RESULT, version, must_echo=version == negotiated, known=known
+                    ),
+                    "Proposes a version no server supports: the server must answer with one it does support."
+                    if unknown
+                    else f"Proposes protocol `{version}`. The server must answer with the same version "
+                    "if it supports it, and otherwise with another version it supports.",
+                    with_session=False,
+                )
+            )
+        return self._folder(
+            "91 Protocol versions",
+            items,
+            "Version negotiation (`initialize`). Each request opens a separate session and leaves "
+            f"`mcpSessionId` untouched. Discovery negotiated `{negotiated}`.",
+        )
+
     def teardown(self) -> Optional[Dict[str, Any]]:
         if not self.options.teardown:
             return None
@@ -553,6 +595,7 @@ class CollectionBuilder:
             self.resources(),
             self.prompts(),
             self.protocol(),
+            self.protocol_versions(),
             self.teardown(),
         ]
         variables = [

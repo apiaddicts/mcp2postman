@@ -56,7 +56,7 @@ def test_collection_shape(collection):
     assert collection["info"]["schema"] == POSTMAN_SCHEMA
     assert collection["info"]["name"] == "srv (MCP)"
     folders = [f["name"] for f in collection["item"]]
-    assert folders == ["00 Lifecycle", "01 Tools", "03 Prompts", "90 Protocol", "99 Teardown"]
+    assert folders == ["00 Lifecycle", "01 Tools", "03 Prompts", "90 Protocol", "91 Protocol versions", "99 Teardown"]
     variables = {v["key"]: v["value"] for v in collection["variable"]}
     assert variables == {"baseUrl": "http://h/mcp", "protocolVersion": "2025-06-18", "mcpSessionId": ""}
     # collection is deterministic
@@ -197,3 +197,35 @@ def test_variable_helpers():
 def test_environment_without_body_variables_still_has_base_url():
     env = build_environment(GeneratorOptions(base_url="http://x/mcp"), "e")
     assert env["values"] == [{"key": "baseUrl", "value": "http://x/mcp", "type": "default", "enabled": True}]
+
+
+def test_protocol_versions_folder(collection):
+    folder = next(f for f in collection["item"] if f["name"] == "91 Protocol versions")
+    names = [i["name"] for i in folder["item"]]
+    assert names == [
+        "initialize with 2026-07-28",
+        "initialize with 2025-11-25",
+        "initialize with 2025-06-18",
+        "initialize with unknown version 1999-01-01",
+    ]
+    for item in folder["item"]:
+        keys = [h["key"] for h in item["request"]["header"]]
+        assert "Mcp-Session-Id" not in keys
+        script = "\n".join(item["event"][0]["script"]["exec"])
+        assert "collectionVariables.set" not in script  # never clobbers the main session
+    scripts_by_name = {i["name"]: "\n".join(i["event"][0]["script"]["exec"]) for i in folder["item"]}
+    # SNAPSHOT negotiated 2025-06-18, so the server is known to support it.
+    assert "keeps the requested version 2025-06-18" in scripts_by_name["initialize with 2025-06-18"]
+    assert "keeps the requested version" not in scripts_by_name["initialize with 2026-07-28"]
+    assert "does not echo the unknown version" in scripts_by_name["initialize with unknown version 1999-01-01"]
+
+
+def test_protocol_versions_configurable():
+    col = build_collection(SNAPSHOT, GeneratorOptions(protocol_versions=["2025-11-25"]))
+    folder = next(f for f in col["item"] if f["name"] == "91 Protocol versions")
+    assert [i["name"] for i in folder["item"]] == [
+        "initialize with 2025-11-25", "initialize with unknown version 1999-01-01"]
+    names = [f["name"] for f in build_collection(SNAPSHOT, GeneratorOptions(protocol_versions=[]))["item"]]
+    assert "91 Protocol versions" not in names
+    names = [f["name"] for f in build_collection(SNAPSHOT, GeneratorOptions(protocol_tests=False))["item"]]
+    assert "91 Protocol versions" not in names

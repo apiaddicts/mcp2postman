@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import __version__
-from .client import DEFAULT_PROTOCOL_VERSION, HttpTransport, MCPError, StdioTransport, Transport
+from .client import SUPPORTED_PROTOCOL_VERSIONS, HttpTransport, MCPError, StdioTransport, Transport
 from .config import load_server
 from .discovery import ServerSnapshot, discover
 from .postman import GeneratorOptions, build_collection_and_environment
@@ -28,6 +28,16 @@ def _parse_header(raw: str) -> Tuple[str, str]:
     if not name:
         raise argparse.ArgumentTypeError(f"empty header name in {raw!r}")
     return name, value.strip()
+
+
+def _parse_versions(raw: str) -> List[str]:
+    if raw.strip().lower() == "none":
+        return []
+    versions = [v.strip() for v in raw.split(",") if v.strip()]
+    for version in versions:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", version):
+            raise argparse.ArgumentTypeError(f"protocol version must look like YYYY-MM-DD, got {version!r}")
+    return versions
 
 
 def _parse_env(raw: str) -> Tuple[str, str]:
@@ -81,8 +91,9 @@ def _add_source_args(parser: argparse.ArgumentParser, allow_snapshot: bool) -> N
     )
     src.add_argument(
         "--protocol-version",
-        default=DEFAULT_PROTOCOL_VERSION,
-        help=f"protocol version proposed during initialize (default: {DEFAULT_PROTOCOL_VERSION})",
+        default=None,
+        help="protocol version proposed during initialize. Default: the newest supported "
+        f"({', '.join(SUPPORTED_PROTOCOL_VERSIONS)}), falling back to older ones if the server rejects it",
     )
     src.add_argument("--timeout", type=float, default=30.0, help="seconds to wait for each response (default: 30)")
 
@@ -142,6 +153,14 @@ def build_parser() -> argparse.ArgumentParser:
     sel.add_argument("--no-wrong-type-tests", action="store_true", help="skip 'wrong type' requests")
     sel.add_argument("--no-optional-variants", action="store_true", help="skip one request per optional attribute")
     sel.add_argument("--no-protocol-tests", action="store_true", help="skip generic JSON-RPC conformance requests")
+    sel.add_argument(
+        "--protocol-versions",
+        type=_parse_versions,
+        default=list(SUPPORTED_PROTOCOL_VERSIONS),
+        metavar="V1,V2",
+        help="protocol versions checked in the '91 Protocol versions' folder, comma separated "
+        f"(default: {','.join(SUPPORTED_PROTOCOL_VERSIONS)}; 'none' to skip the folder)",
+    )
     sel.add_argument("--no-resources", action="store_true", help="skip the resources folder")
     sel.add_argument("--no-prompts", action="store_true", help="skip the prompts folder")
     sel.add_argument("--no-teardown", action="store_true", help="skip the session DELETE request")
@@ -251,6 +270,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         wrong_type_tests=not args.no_wrong_type_tests,
         optional_variants=not args.no_optional_variants,
         protocol_tests=not args.no_protocol_tests,
+        protocol_versions=args.protocol_versions,
         include_resources=not args.no_resources,
         include_prompts=not args.no_prompts,
         teardown=not args.no_teardown,
