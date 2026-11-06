@@ -229,3 +229,20 @@ def test_protocol_versions_configurable():
     assert "91 Protocol versions" not in names
     names = [f["name"] for f in build_collection(SNAPSHOT, GeneratorOptions(protocol_tests=False))["item"]]
     assert "91 Protocol versions" not in names
+
+
+def test_tool_folder_has_one_subfolder_per_test_kind(collection):
+    tools = next(f for f in collection["item"] if f["name"] == "01 Tools")
+    folder = next(f for f in tools["item"] if f["name"] == "tool: create_user")
+    sub = {f["name"]: [i["name"] for i in f["item"]] for f in folder["item"]}
+    assert list(sub) == ["valid", "missing required -> error", "wrong type -> error"]
+    assert all(n.startswith("create_user - valid") for n in sub["valid"])
+    assert all("missing required" in n for n in sub["missing required -> error"])
+    assert all("wrong type" in n for n in sub["wrong type -> error"])
+
+
+def test_tool_subfolders_skip_empty_kinds():
+    col = build_collection(SNAPSHOT, GeneratorOptions(negative_tests=False))
+    tools = next(f for f in col["item"] if f["name"] == "01 Tools")
+    folder = next(f for f in tools["item"] if f["name"] == "tool: create_user")
+    assert [f["name"] for f in folder["item"]] == ["valid"]
