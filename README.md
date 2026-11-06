@@ -111,9 +111,10 @@ mcp2rest2postman generate (--url URL | --stdio COMMAND | --config FILE | --from-
 | `--no-negative-tests` | Do not generate the *missing required* and *wrong type* requests |
 | `--no-wrong-type-tests` | Do not generate the *wrong type* requests |
 | `--no-optional-variants` | Do not generate one request per optional attribute |
-| `--no-protocol-tests` | Do not generate the generic JSON-RPC checks (unknown method, unknown tool) |
+| `--no-protocol-tests` | Do not generate the generic JSON-RPC checks (unknown method, unknown tool) or the protocol version checks |
+| `--protocol-versions V1,V2` | Protocol versions checked in the `91 Protocol versions` folder. The default is every supported version (`2026-07-28,2025-11-25,2025-06-18`), and `none` leaves the folder out |
 | `--no-resources` / `--no-prompts` / `--no-teardown` | Leave out those folders |
-| `--protocol-version V` | Protocol version proposed in `initialize` (the default is `2025-06-18`) |
+| `--protocol-version V` | Protocol version proposed in `initialize`. By default the newest supported version (`2026-07-28`) is proposed. If the server rejects it instead of negotiating, discovery retries with `2025-11-25`, then `2025-06-18` |
 | `--timeout S` | Seconds to wait for each response during discovery |
 
 ### `inspect`
@@ -308,6 +309,7 @@ drift tests fail.
 ├── 02 Resources        resources/list, resources/templates/list, resources/read <each>, missing uri -> error
 ├── 03 Prompts          prompts/list, prompts/get (all / required only / missing required -> error)
 ├── 90 Protocol         unknown method -> -32601
+├── 91 Protocol versions initialize with <each version> + an unknown version (negotiation rules)
 └── 99 Teardown         DELETE session
 ```
 
@@ -320,6 +322,12 @@ tool's `outputSchema` when the tool declares one.
 `error` or with a tool result that has `isError: true`. The MCP specification
 allows both. The error payload must also be well formed, and the server must
 not answer with a 5xx status.
+
+**Protocol version checks** (`91 Protocol versions`) send one `initialize` per
+version. The server must answer with a version mcp2rest2postman supports, must
+keep the version that discovery negotiated, and must not echo the unknown
+version `1999-01-01`. Each request opens its own session and doesn't change
+`{{mcpSessionId}}`.
 
 > ⚠️ The collection **really calls every tool**, several times. Don't run it
 > against tools with side effects (sending email, payments, deletes) on a

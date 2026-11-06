@@ -27,7 +27,11 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 
 from . import __version__
 
-DEFAULT_PROTOCOL_VERSION = "2025-06-18"
+#: MCP protocol revisions this tool knows, newest first (SA-3290).
+SUPPORTED_PROTOCOL_VERSIONS = ("2026-07-28", "2025-11-25", "2025-06-18")
+#: Proposed during ``initialize``. Per the spec, a server that does not support
+#: it answers with another version it supports, so proposing the newest is safe.
+DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]
 CLIENT_INFO = {"name": "mcp2rest2postman", "version": __version__}
 USER_AGENT = f"mcp2rest2postman/{__version__}"
 
@@ -43,6 +47,10 @@ class MCPError(Exception):
     def __str__(self) -> str:  # pragma: no cover - trivial
         base = super().__str__()
         return f"[{self.code}] {base}" if self.code is not None else base
+
+
+class ConnectionFailed(MCPError):
+    """The server could not be reached or the process died (retrying will not help)."""
 
 
 @dataclass
@@ -160,7 +168,7 @@ class HttpTransport(Transport):
                 body=body,
             )
         except urllib.error.URLError as err:
-            raise MCPError(f"Cannot reach MCP server at {self.url}: {err.reason}") from err
+            raise ConnectionFailed(f"Cannot reach MCP server at {self.url}: {err.reason}") from err
         self.last_exchange = exchange
         session = exchange.headers.get("mcp-session-id")
         if session:
@@ -243,7 +251,7 @@ class StdioTransport(Transport):
                 bufsize=1,
             )
         except OSError as err:
-            raise MCPError(f"Cannot start stdio server {argv!r}: {err}") from err
+            raise ConnectionFailed(f"Cannot start stdio server {argv!r}: {err}") from err
         self._stderr: List[str] = []
         threading.Thread(target=self._read_stdout, daemon=True).start()
         threading.Thread(target=self._read_stderr, daemon=True).start()
@@ -269,7 +277,7 @@ class StdioTransport(Transport):
 
     def _send(self, payload: Mapping[str, Any]) -> None:
         if self.proc.stdin is None or self.proc.poll() is not None:
-            raise MCPError("stdio server is not running. stderr: " + "".join(self._stderr[-20:]))
+            raise ConnectionFailed("stdio server is not running. stderr: " + "".join(self._stderr[-20:]))
         self.proc.stdin.write(json.dumps(payload) + "\n")
         self.proc.stdin.flush()
 
@@ -285,7 +293,7 @@ class StdioTransport(Transport):
             except queue.Empty as err:
                 raise MCPError(f"Timeout waiting for response to '{method}'") from err
             if msg is None:
-                raise MCPError(
+                raise ConnectionFailed(
                     "stdio server closed the connection. stderr: " + "".join(self._stderr[-20:])
                 )
             # Answer server->client pings so the server does not stall.

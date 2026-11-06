@@ -83,6 +83,17 @@ collection variables. The following requests send `{{mcpSessionId}}` and
 `{{protocolVersion}}`. The `99 Teardown` folder sends `DELETE` to end the
 session. Servers that don't support termination can answer with 405 or 404.
 
+### Protocol versions
+`client.SUPPORTED_PROTOCOL_VERSIONS` lists the MCP revisions the tool knows,
+newest first (`2026-07-28`, `2025-11-25`, `2025-06-18`). Discovery proposes the
+newest. A spec-compliant server that doesn't support it answers with an older
+version. When a server rejects the proposal with an error instead, `discover()`
+retries with the next version. It doesn't retry on `ConnectionFailed`, which is
+raised when the server is unreachable or the process died. A negotiated version
+outside the list is recorded as a snapshot warning. The result schemas in
+`mcp_schemas.py` allow unknown fields, so additions in newer revisions don't
+fail validation. The `91 Protocol versions` folder checks the negotiation rules on a live server.
+
 ### Schema validation inside Postman
 The tests use Postman's built-in `pm.expect(obj).to.have.jsonSchema(schema)`,
 which runs Ajv with draft-07. Tool `outputSchema`s often declare

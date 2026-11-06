@@ -101,6 +101,39 @@ if (mcp.result && mcp.result.protocolVersion) {{
     )
 
 
+def protocol_version_tests(
+    result_schema: Dict[str, Any], requested: str, must_echo: bool, known: Iterable[str]
+) -> List[str]:
+    """Checks for an ``initialize`` that proposes *requested* (version negotiation).
+
+    The spec says the server answers with the requested version when it
+    supports it, and otherwise with another version it supports. *must_echo*
+    is true when discovery proved the server supports *requested*. These
+    requests do not touch ``mcpSessionId`` / ``protocolVersion``.
+    """
+    known = list(known)
+    checks = f"""const negotiated = mcp.result ? mcp.result.protocolVersion : undefined;
+pm.test('answers with a protocol version', function () {{
+  pm.expect(negotiated).to.be.a('string').and.not.be.empty;
+}});
+"""
+    if must_echo:
+        checks += f"""pm.test('keeps the requested version {requested} (supported by the server)', function () {{
+  pm.expect(negotiated).to.eql({_js(requested)});
+}});
+"""
+    elif requested not in known:
+        checks += f"""pm.test('does not echo the unknown version {requested}', function () {{
+  pm.expect(negotiated).to.not.eql({_js(requested)});
+}});
+"""
+    checks += f"""pm.test('negotiated version is one mcp2rest2postman supports', function () {{
+  pm.expect(negotiated).to.be.oneOf({_js(known)});
+}});
+"""
+    return _lines(HELPERS, jsonrpc_success(result_schema, "InitializeResult"), checks)
+
+
 def notification_tests() -> List[str]:
     return _lines(
         """pm.test('notification accepted (HTTP 202)', function () {

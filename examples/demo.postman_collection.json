@@ -3516,6 +3516,370 @@
       "description": "Generic JSON-RPC / MCP conformance checks."
     },
     {
+      "name": "91 Protocol versions",
+      "item": [
+        {
+          "name": "initialize with 2026-07-28",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 37,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2026-07-28\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"mcp2rest2postman\",\n      \"version\": \"0.2.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Proposes protocol `2026-07-28`. The server must answer with the same version if it supports it, and otherwise with another version it supports."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// --- mcp2rest2postman: decode JSON or SSE body and match the JSON-RPC id ---",
+                  "const mcp = (() => {",
+                  "  const body = pm.response.text() || '';",
+                  "  const ctype = String(pm.response.headers.get('Content-Type') || '').toLowerCase();",
+                  "  const parseSse = (txt) => {",
+                  "    const out = []; let data = [];",
+                  "    const flush = () => { if (data.length) { try { out.push(JSON.parse(data.join('\\n'))); } catch (e) { /* ignore */ } data = []; } };",
+                  "    txt.split(/\\r?\\n/).forEach((line) => {",
+                  "      if (line === '') { flush(); } else if (line.startsWith('data:')) { data.push(line.slice(line.charAt(5) === ' ' ? 6 : 5)); }",
+                  "    });",
+                  "    flush();",
+                  "    return out;",
+                  "  };",
+                  "  let messages = [];",
+                  "  if (body.trim()) {",
+                  "    if (ctype.includes('text/event-stream')) { messages = parseSse(body); } else {",
+                  "      try { messages = [JSON.parse(body)]; } catch (e) { messages = parseSse(body); }",
+                  "    }",
+                  "  }",
+                  "  let requestId;",
+                  "  try { requestId = JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).id; } catch (e) { requestId = undefined; }",
+                  "  const flat = [].concat(...messages.map((m) => (Array.isArray(m) ? m : [m])));",
+                  "  const isResponse = (m) => m && typeof m === 'object' && ('result' in m || 'error' in m);",
+                  "  const message = flat.find((m) => isResponse(m) && (requestId === undefined || m.id === requestId)) || null;",
+                  "  return { messages: flat, message: message, result: message ? message.result : undefined, error: message ? message.error : undefined };",
+                  "})();",
+                  "pm.test('HTTP 200 OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('JSON-RPC 2.0 response matching the request id', function () {",
+                  "  pm.expect(mcp.message, 'no JSON-RPC response found in body: ' + pm.response.text().slice(0, 300)).to.be.an('object');",
+                  "  pm.expect(mcp.message.jsonrpc).to.eql('2.0');",
+                  "});",
+                  "pm.test('no JSON-RPC error', function () {",
+                  "  pm.expect(mcp.error, JSON.stringify(mcp.error)).to.not.exist;",
+                  "});",
+                  "pm.test('result is a valid InitializeResult', function () {",
+                  "  pm.expect(mcp.result).to.have.jsonSchema({\"properties\": {\"capabilities\": {\"type\": \"object\"}, \"instructions\": {\"type\": \"string\"}, \"protocolVersion\": {\"minLength\": 1, \"type\": \"string\"}, \"serverInfo\": {\"properties\": {\"name\": {\"type\": \"string\"}, \"version\": {\"type\": \"string\"}}, \"required\": [\"name\", \"version\"], \"type\": \"object\"}}, \"required\": [\"protocolVersion\", \"capabilities\", \"serverInfo\"], \"type\": \"object\"});",
+                  "});",
+                  "const negotiated = mcp.result ? mcp.result.protocolVersion : undefined;",
+                  "pm.test('answers with a protocol version', function () {",
+                  "  pm.expect(negotiated).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.test('negotiated version is one mcp2rest2postman supports', function () {",
+                  "  pm.expect(negotiated).to.be.oneOf([\"2026-07-28\", \"2025-11-25\", \"2025-06-18\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "initialize with 2025-11-25",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 38,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2025-11-25\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"mcp2rest2postman\",\n      \"version\": \"0.2.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Proposes protocol `2025-11-25`. The server must answer with the same version if it supports it, and otherwise with another version it supports."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// --- mcp2rest2postman: decode JSON or SSE body and match the JSON-RPC id ---",
+                  "const mcp = (() => {",
+                  "  const body = pm.response.text() || '';",
+                  "  const ctype = String(pm.response.headers.get('Content-Type') || '').toLowerCase();",
+                  "  const parseSse = (txt) => {",
+                  "    const out = []; let data = [];",
+                  "    const flush = () => { if (data.length) { try { out.push(JSON.parse(data.join('\\n'))); } catch (e) { /* ignore */ } data = []; } };",
+                  "    txt.split(/\\r?\\n/).forEach((line) => {",
+                  "      if (line === '') { flush(); } else if (line.startsWith('data:')) { data.push(line.slice(line.charAt(5) === ' ' ? 6 : 5)); }",
+                  "    });",
+                  "    flush();",
+                  "    return out;",
+                  "  };",
+                  "  let messages = [];",
+                  "  if (body.trim()) {",
+                  "    if (ctype.includes('text/event-stream')) { messages = parseSse(body); } else {",
+                  "      try { messages = [JSON.parse(body)]; } catch (e) { messages = parseSse(body); }",
+                  "    }",
+                  "  }",
+                  "  let requestId;",
+                  "  try { requestId = JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).id; } catch (e) { requestId = undefined; }",
+                  "  const flat = [].concat(...messages.map((m) => (Array.isArray(m) ? m : [m])));",
+                  "  const isResponse = (m) => m && typeof m === 'object' && ('result' in m || 'error' in m);",
+                  "  const message = flat.find((m) => isResponse(m) && (requestId === undefined || m.id === requestId)) || null;",
+                  "  return { messages: flat, message: message, result: message ? message.result : undefined, error: message ? message.error : undefined };",
+                  "})();",
+                  "pm.test('HTTP 200 OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('JSON-RPC 2.0 response matching the request id', function () {",
+                  "  pm.expect(mcp.message, 'no JSON-RPC response found in body: ' + pm.response.text().slice(0, 300)).to.be.an('object');",
+                  "  pm.expect(mcp.message.jsonrpc).to.eql('2.0');",
+                  "});",
+                  "pm.test('no JSON-RPC error', function () {",
+                  "  pm.expect(mcp.error, JSON.stringify(mcp.error)).to.not.exist;",
+                  "});",
+                  "pm.test('result is a valid InitializeResult', function () {",
+                  "  pm.expect(mcp.result).to.have.jsonSchema({\"properties\": {\"capabilities\": {\"type\": \"object\"}, \"instructions\": {\"type\": \"string\"}, \"protocolVersion\": {\"minLength\": 1, \"type\": \"string\"}, \"serverInfo\": {\"properties\": {\"name\": {\"type\": \"string\"}, \"version\": {\"type\": \"string\"}}, \"required\": [\"name\", \"version\"], \"type\": \"object\"}}, \"required\": [\"protocolVersion\", \"capabilities\", \"serverInfo\"], \"type\": \"object\"});",
+                  "});",
+                  "const negotiated = mcp.result ? mcp.result.protocolVersion : undefined;",
+                  "pm.test('answers with a protocol version', function () {",
+                  "  pm.expect(negotiated).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.test('negotiated version is one mcp2rest2postman supports', function () {",
+                  "  pm.expect(negotiated).to.be.oneOf([\"2026-07-28\", \"2025-11-25\", \"2025-06-18\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "initialize with 2025-06-18",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 39,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2025-06-18\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"mcp2rest2postman\",\n      \"version\": \"0.2.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Proposes protocol `2025-06-18`. The server must answer with the same version if it supports it, and otherwise with another version it supports."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// --- mcp2rest2postman: decode JSON or SSE body and match the JSON-RPC id ---",
+                  "const mcp = (() => {",
+                  "  const body = pm.response.text() || '';",
+                  "  const ctype = String(pm.response.headers.get('Content-Type') || '').toLowerCase();",
+                  "  const parseSse = (txt) => {",
+                  "    const out = []; let data = [];",
+                  "    const flush = () => { if (data.length) { try { out.push(JSON.parse(data.join('\\n'))); } catch (e) { /* ignore */ } data = []; } };",
+                  "    txt.split(/\\r?\\n/).forEach((line) => {",
+                  "      if (line === '') { flush(); } else if (line.startsWith('data:')) { data.push(line.slice(line.charAt(5) === ' ' ? 6 : 5)); }",
+                  "    });",
+                  "    flush();",
+                  "    return out;",
+                  "  };",
+                  "  let messages = [];",
+                  "  if (body.trim()) {",
+                  "    if (ctype.includes('text/event-stream')) { messages = parseSse(body); } else {",
+                  "      try { messages = [JSON.parse(body)]; } catch (e) { messages = parseSse(body); }",
+                  "    }",
+                  "  }",
+                  "  let requestId;",
+                  "  try { requestId = JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).id; } catch (e) { requestId = undefined; }",
+                  "  const flat = [].concat(...messages.map((m) => (Array.isArray(m) ? m : [m])));",
+                  "  const isResponse = (m) => m && typeof m === 'object' && ('result' in m || 'error' in m);",
+                  "  const message = flat.find((m) => isResponse(m) && (requestId === undefined || m.id === requestId)) || null;",
+                  "  return { messages: flat, message: message, result: message ? message.result : undefined, error: message ? message.error : undefined };",
+                  "})();",
+                  "pm.test('HTTP 200 OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('JSON-RPC 2.0 response matching the request id', function () {",
+                  "  pm.expect(mcp.message, 'no JSON-RPC response found in body: ' + pm.response.text().slice(0, 300)).to.be.an('object');",
+                  "  pm.expect(mcp.message.jsonrpc).to.eql('2.0');",
+                  "});",
+                  "pm.test('no JSON-RPC error', function () {",
+                  "  pm.expect(mcp.error, JSON.stringify(mcp.error)).to.not.exist;",
+                  "});",
+                  "pm.test('result is a valid InitializeResult', function () {",
+                  "  pm.expect(mcp.result).to.have.jsonSchema({\"properties\": {\"capabilities\": {\"type\": \"object\"}, \"instructions\": {\"type\": \"string\"}, \"protocolVersion\": {\"minLength\": 1, \"type\": \"string\"}, \"serverInfo\": {\"properties\": {\"name\": {\"type\": \"string\"}, \"version\": {\"type\": \"string\"}}, \"required\": [\"name\", \"version\"], \"type\": \"object\"}}, \"required\": [\"protocolVersion\", \"capabilities\", \"serverInfo\"], \"type\": \"object\"});",
+                  "});",
+                  "const negotiated = mcp.result ? mcp.result.protocolVersion : undefined;",
+                  "pm.test('answers with a protocol version', function () {",
+                  "  pm.expect(negotiated).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.test('keeps the requested version 2025-06-18 (supported by the server)', function () {",
+                  "  pm.expect(negotiated).to.eql(\"2025-06-18\");",
+                  "});",
+                  "pm.test('negotiated version is one mcp2rest2postman supports', function () {",
+                  "  pm.expect(negotiated).to.be.oneOf([\"2026-07-28\", \"2025-11-25\", \"2025-06-18\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "initialize with unknown version 1999-01-01",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 40,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"1999-01-01\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"mcp2rest2postman\",\n      \"version\": \"0.2.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Proposes a version no server supports: the server must answer with one it does support."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// --- mcp2rest2postman: decode JSON or SSE body and match the JSON-RPC id ---",
+                  "const mcp = (() => {",
+                  "  const body = pm.response.text() || '';",
+                  "  const ctype = String(pm.response.headers.get('Content-Type') || '').toLowerCase();",
+                  "  const parseSse = (txt) => {",
+                  "    const out = []; let data = [];",
+                  "    const flush = () => { if (data.length) { try { out.push(JSON.parse(data.join('\\n'))); } catch (e) { /* ignore */ } data = []; } };",
+                  "    txt.split(/\\r?\\n/).forEach((line) => {",
+                  "      if (line === '') { flush(); } else if (line.startsWith('data:')) { data.push(line.slice(line.charAt(5) === ' ' ? 6 : 5)); }",
+                  "    });",
+                  "    flush();",
+                  "    return out;",
+                  "  };",
+                  "  let messages = [];",
+                  "  if (body.trim()) {",
+                  "    if (ctype.includes('text/event-stream')) { messages = parseSse(body); } else {",
+                  "      try { messages = [JSON.parse(body)]; } catch (e) { messages = parseSse(body); }",
+                  "    }",
+                  "  }",
+                  "  let requestId;",
+                  "  try { requestId = JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).id; } catch (e) { requestId = undefined; }",
+                  "  const flat = [].concat(...messages.map((m) => (Array.isArray(m) ? m : [m])));",
+                  "  const isResponse = (m) => m && typeof m === 'object' && ('result' in m || 'error' in m);",
+                  "  const message = flat.find((m) => isResponse(m) && (requestId === undefined || m.id === requestId)) || null;",
+                  "  return { messages: flat, message: message, result: message ? message.result : undefined, error: message ? message.error : undefined };",
+                  "})();",
+                  "pm.test('HTTP 200 OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('JSON-RPC 2.0 response matching the request id', function () {",
+                  "  pm.expect(mcp.message, 'no JSON-RPC response found in body: ' + pm.response.text().slice(0, 300)).to.be.an('object');",
+                  "  pm.expect(mcp.message.jsonrpc).to.eql('2.0');",
+                  "});",
+                  "pm.test('no JSON-RPC error', function () {",
+                  "  pm.expect(mcp.error, JSON.stringify(mcp.error)).to.not.exist;",
+                  "});",
+                  "pm.test('result is a valid InitializeResult', function () {",
+                  "  pm.expect(mcp.result).to.have.jsonSchema({\"properties\": {\"capabilities\": {\"type\": \"object\"}, \"instructions\": {\"type\": \"string\"}, \"protocolVersion\": {\"minLength\": 1, \"type\": \"string\"}, \"serverInfo\": {\"properties\": {\"name\": {\"type\": \"string\"}, \"version\": {\"type\": \"string\"}}, \"required\": [\"name\", \"version\"], \"type\": \"object\"}}, \"required\": [\"protocolVersion\", \"capabilities\", \"serverInfo\"], \"type\": \"object\"});",
+                  "});",
+                  "const negotiated = mcp.result ? mcp.result.protocolVersion : undefined;",
+                  "pm.test('answers with a protocol version', function () {",
+                  "  pm.expect(negotiated).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.test('does not echo the unknown version 1999-01-01', function () {",
+                  "  pm.expect(negotiated).to.not.eql(\"1999-01-01\");",
+                  "});",
+                  "pm.test('negotiated version is one mcp2rest2postman supports', function () {",
+                  "  pm.expect(negotiated).to.be.oneOf([\"2026-07-28\", \"2025-11-25\", \"2025-06-18\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Version negotiation (`initialize`). Each request opens a separate session and leaves `mcpSessionId` untouched. Discovery negotiated `2025-06-18`."
+    },
+    {
       "name": "99 Teardown",
       "item": [
         {

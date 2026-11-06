@@ -1,6 +1,6 @@
 import pytest
 
-from mcp2rest2postman.client import HttpTransport, MCPClient, MCPError, StdioTransport, parse_sse
+from mcp2rest2postman.client import HttpTransport, MCPClient, MCPError, StdioTransport, Transport, parse_sse
 from mcp2rest2postman.discovery import ServerSnapshot, discover
 
 
@@ -71,3 +71,43 @@ def test_http_sends_custom_user_agent_overridable():
     assert not USER_AGENT.startswith("Python-urllib")
     custom = HttpTransport("http://x", headers={"User-Agent": "me/1"})
     assert custom._headers()["User-Agent"] == "me/1"
+
+
+class _RejectNewVersions(Transport):
+    """Fake server that errors on versions it does not know instead of negotiating."""
+
+    def __init__(self, supported):
+        self.supported = supported
+        self.proposed = []
+
+    def request(self, method, params=None):
+        if method == "initialize":
+            self.proposed.append(params["protocolVersion"])
+            if params["protocolVersion"] not in self.supported:
+                raise MCPError("Unsupported protocol version", -32602)
+            return {"protocolVersion": params["protocolVersion"], "capabilities": {}, "serverInfo": {"name": "f"}}
+        return {}
+
+    def notify(self, method, params=None):
+        pass
+
+
+def test_discovery_falls_back_to_older_protocol_versions():
+    from mcp2rest2postman.client import SUPPORTED_PROTOCOL_VERSIONS
+    from mcp2rest2postman.discovery import discover
+
+    fake = _RejectNewVersions({"2025-06-18"})
+    snap = discover(fake)
+    assert fake.proposed == list(SUPPORTED_PROTOCOL_VERSIONS)
+    assert snap.protocol_version == "2025-06-18"
+    assert not snap.warnings
+    with pytest.raises(MCPError):
+        discover(_RejectNewVersions(set()), "2026-07-28")  # explicit version: no fallback
+
+
+def test_discovery_warns_on_unknown_negotiated_version():
+    from mcp2rest2postman.discovery import discover
+
+    snap = discover(_RejectNewVersions({"2024-11-05"}), "2024-11-05")
+    assert snap.protocol_version == "2024-11-05"
+    assert "does not know" in snap.warnings[0]

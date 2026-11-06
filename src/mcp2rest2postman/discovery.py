@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from .client import MCPClient, MCPError, Transport
+from .client import SUPPORTED_PROTOCOL_VERSIONS, ConnectionFailed, MCPClient, MCPError, Transport
 
 SNAPSHOT_FORMAT = "mcp2rest2postman/snapshot@1"
 
@@ -72,8 +72,20 @@ def discover(
     A failing list operation does not abort discovery: it is recorded as a
     warning in the snapshot.
     """
-    client = MCPClient(transport) if protocol_version is None else MCPClient(transport, protocol_version)
-    init = client.initialize()
+    candidates = [protocol_version] if protocol_version else list(SUPPORTED_PROTOCOL_VERSIONS)
+    for index, version in enumerate(candidates):
+        client = MCPClient(transport, version)
+        try:
+            init = client.initialize()
+            break
+        except ConnectionFailed:
+            raise
+        except MCPError as err:
+            # Some servers reject an unknown version instead of negotiating:
+            # retry with the next older one we support.
+            if index == len(candidates) - 1:
+                raise
+            log(f"initialize with protocol {version} failed ({err}); retrying with {candidates[index + 1]}")
     caps = client.capabilities
     snapshot = ServerSnapshot(
         protocol_version=init.get("protocolVersion") or client.protocol_version,
@@ -82,6 +94,11 @@ def discover(
         instructions=init.get("instructions"),
         source=source or {},
     )
+    if snapshot.protocol_version not in SUPPORTED_PROTOCOL_VERSIONS:
+        snapshot.warnings.append(
+            f"server negotiated protocol {snapshot.protocol_version}, which mcp2rest2postman does not "
+            f"know (supported: {', '.join(SUPPORTED_PROTOCOL_VERSIONS)}); generated checks may not match it"
+        )
     log(
         f"Connected to {snapshot.server_name} "
         f"(protocol {snapshot.protocol_version}, capabilities: {', '.join(sorted(caps)) or 'none'})"
