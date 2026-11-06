@@ -312,9 +312,12 @@ class CollectionBuilder:
             )
 
         success = scripts.tool_success_tests(ok_schema, ajv_output)
-        items: List[Dict[str, Any]] = []
+        # One subfolder per kind of test (SA-3277); empty kinds are left out.
+        valid: List[Dict[str, Any]] = []
+        missing: List[Dict[str, Any]] = []
+        wrong: List[Dict[str, Any]] = []
         all_args = args(include_optional=True)
-        items.append(
+        valid.append(
             call(
                 "valid, all attributes",
                 all_args,
@@ -323,7 +326,7 @@ class CollectionBuilder:
             )
         )
         if optional:
-            items.append(
+            valid.append(
                 call(
                     "valid, required attributes only",
                     args(include_optional=False),
@@ -333,7 +336,7 @@ class CollectionBuilder:
             )
         if self.options.optional_variants and len(optional) > 1:
             for key in optional:
-                items.append(
+                valid.append(
                     call(
                         f"valid, required + optional '{key}'",
                         args(include_optional=False, only=[key]),
@@ -344,7 +347,7 @@ class CollectionBuilder:
         if self.options.negative_tests:
             for key in required:
                 broken = {k: v for k, v in all_args.items() if k != key}
-                items.append(
+                missing.append(
                     call(
                         f"missing required '{key}' -> error",
                         broken,
@@ -362,7 +365,7 @@ class CollectionBuilder:
                     broken = dict(all_args)
                     broken[key] = bad
                     kind = "required" if key in required else "optional"
-                    items.append(
+                    wrong.append(
                         call(
                             f"wrong type for {kind} '{key}' -> error",
                             broken,
@@ -374,6 +377,12 @@ class CollectionBuilder:
                         )
                     )
         description = self._tool_description(tool, required, optional, props)
+        subfolders = [
+            ("valid", valid, "Calls the server must accept."),
+            ("missing required -> error", missing, "One required attribute left out per request."),
+            ("wrong type -> error", wrong, "One attribute with a value of the wrong type per request."),
+        ]
+        items = [self._folder(label, reqs, doc) for label, reqs, doc in subfolders if reqs]
         return self._folder(f"tool: {name}", items, description)
 
     @staticmethod

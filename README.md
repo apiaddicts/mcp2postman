@@ -296,11 +296,14 @@ drift tests fail.
 ├── 01 Tools
 │   ├── tools/list                       → schema + drift checks
 │   ├── tool: <name>
-│   │   ├── <name> - valid, all attributes
-│   │   ├── <name> - valid, required attributes only
-│   │   ├── <name> - valid, required + optional '<opt>'      (one per optional attribute)
-│   │   ├── <name> - missing required '<req>' -> error       (one per required attribute)
-│   │   └── <name> - wrong type for required|optional '<attr>' -> error
+│   │   ├── valid
+│   │   │   ├── <name> - valid, all attributes
+│   │   │   ├── <name> - valid, required attributes only
+│   │   │   └── <name> - valid, required + optional '<opt>'  (one per optional attribute)
+│   │   ├── missing required -> error
+│   │   │   └── <name> - missing required '<req>' -> error   (one per required attribute)
+│   │   └── wrong type -> error
+│   │       └── <name> - wrong type for required|optional '<attr>' -> error
 │   └── tools/call unknown tool -> error
 ├── 02 Resources        resources/list, resources/templates/list, resources/read <each>, missing uri -> error
 ├── 03 Prompts          prompts/list, prompts/get (all / required only / missing required -> error)
