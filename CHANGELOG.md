@@ -2,7 +2,7 @@
 
 ## 1.0.0 - 2026-11-11
 
-First release published on PyPI: `pip install mcp2rest2postman`.
+First release published on PyPI: `pip install mcp2postman`.
 
 ### Added
 - Support for MCP protocol versions `2026-07-28`, `2025-11-25` and
@@ -19,6 +19,10 @@ First release published on PyPI: `pip install mcp2rest2postman`.
   examples.
 
 ### Changed
+- The tool is now called `mcp2postman`, like the repository: package on PyPI,
+  Python module (`import mcp2postman`, `python -m mcp2postman`), command,
+  MCP `clientInfo` name and `User-Agent`. Snapshots now use the format
+  `mcp2postman/snapshot@1`; regenerate snapshots saved by 0.x versions.
 - Each `tool: <name>` folder now holds one subfolder per test kind
   ("valid", "missing required -> error", "wrong type -> error"), so a single
   kind of test can be run or reviewed on its own. Empty kinds, for example

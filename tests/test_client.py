@@ -1,7 +1,7 @@
 import pytest
 
-from mcp2rest2postman.client import HttpTransport, MCPClient, MCPError, StdioTransport, Transport, parse_sse
-from mcp2rest2postman.discovery import ServerSnapshot, discover
+from mcp2postman.client import HttpTransport, MCPClient, MCPError, StdioTransport, Transport, parse_sse
+from mcp2postman.discovery import ServerSnapshot, discover
 
 
 def test_parse_sse_multiple_events_and_comments():
@@ -65,7 +65,7 @@ def test_snapshot_rejects_unknown_format():
 
 
 def test_http_sends_custom_user_agent_overridable():
-    from mcp2rest2postman.client import USER_AGENT, HttpTransport
+    from mcp2postman.client import USER_AGENT, HttpTransport
 
     assert HttpTransport("http://x")._headers()["User-Agent"] == USER_AGENT
     assert not USER_AGENT.startswith("Python-urllib")
@@ -93,8 +93,8 @@ class _RejectNewVersions(Transport):
 
 
 def test_discovery_falls_back_to_older_protocol_versions():
-    from mcp2rest2postman.client import SUPPORTED_PROTOCOL_VERSIONS
-    from mcp2rest2postman.discovery import discover
+    from mcp2postman.client import SUPPORTED_PROTOCOL_VERSIONS
+    from mcp2postman.discovery import discover
 
     fake = _RejectNewVersions({"2025-06-18"})
     snap = discover(fake)
@@ -106,7 +106,7 @@ def test_discovery_falls_back_to_older_protocol_versions():
 
 
 def test_discovery_warns_on_unknown_negotiated_version():
-    from mcp2rest2postman.discovery import discover
+    from mcp2postman.discovery import discover
 
     snap = discover(_RejectNewVersions({"2024-11-05"}), "2024-11-05")
     assert snap.protocol_version == "2024-11-05"

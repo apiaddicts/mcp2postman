@@ -10,7 +10,7 @@ import subprocess
 
 import pytest
 
-from mcp2rest2postman.cli import main
+from mcp2postman.cli import main
 
 POSTMAN = os.environ.get("POSTMAN_CLI") or shutil.which("postman")
 NEWMAN = shutil.which("newman")

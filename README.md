@@ -1,8 +1,8 @@
-# mcp2rest2postman
+# mcp2postman
 
-[![PyPI version](https://img.shields.io/pypi/v/mcp2rest2postman.svg)](https://pypi.org/project/mcp2rest2postman/)
-[![Python versions](https://img.shields.io/pypi/pyversions/mcp2rest2postman.svg)](https://pypi.org/project/mcp2rest2postman/)
-[![Downloads](https://static.pepy.tech/badge/mcp2rest2postman/month)](https://pepy.tech/project/mcp2rest2postman)
+[![PyPI version](https://img.shields.io/pypi/v/mcp2postman.svg)](https://pypi.org/project/mcp2postman/)
+[![Python versions](https://img.shields.io/pypi/pyversions/mcp2postman.svg)](https://pypi.org/project/mcp2postman/)
+[![Downloads](https://static.pepy.tech/badge/mcp2postman/month)](https://pepy.tech/project/mcp2postman)
 [![CI](https://github.com/apiaddicts/mcp2postman/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/apiaddicts/mcp2postman/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/apiaddicts/mcp2postman/blob/main/LICENSE.md)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -41,11 +41,11 @@ MCP server ──(initialize, tools/list, resources/list, prompts/list)──▶
 ## Installation
 
 ```bash
-pip install mcp2rest2postman
+pip install mcp2postman
 ```
 
-This installs the `mcp2rest2postman` command. You can also run it with
-`python -m mcp2rest2postman`.
+This installs the `mcp2postman` command. You can also run it with
+`python -m mcp2postman`.
 
 To install the latest development version from GitHub, or from a local clone:
 
@@ -62,8 +62,8 @@ Try it with the bundled demo server:
 ```bash
 python examples/demo_server.py --http --port 8765 &
 
-mcp2rest2postman inspect  --url http://localhost:8765/mcp
-mcp2rest2postman generate --url http://localhost:8765/mcp -o demo.postman_collection.json
+mcp2postman inspect  --url http://localhost:8765/mcp
+mcp2postman generate --url http://localhost:8765/mcp -o demo.postman_collection.json
 # -> demo.postman_collection.json + demo.postman_environment.json
 
 # run it (any of these)
@@ -100,7 +100,7 @@ use those values.
 ### `generate`
 
 ```text
-mcp2rest2postman generate (--url URL | --stdio COMMAND | --config FILE | --from-snapshot FILE) [options]
+mcp2postman generate (--url URL | --stdio COMMAND | --config FILE | --from-snapshot FILE) [options]
 ```
 
 | Option | Description |
@@ -133,7 +133,7 @@ mcp2rest2postman generate (--url URL | --stdio COMMAND | --config FILE | --from-
 ### `inspect`
 
 ```text
-mcp2rest2postman inspect (--url URL | --stdio COMMAND | --config FILE [--server NAME]) [-H ...] [--json]
+mcp2postman inspect (--url URL | --stdio COMMAND | --config FILE [--server NAME]) [-H ...] [--json]
 ```
 
 Prints the server's tools (required attributes are marked with `*`), resources
@@ -154,7 +154,7 @@ it in a values file:
 ```
 
 ```bash
-mcp2rest2postman generate --url … --values examples/values.json
+mcp2postman generate --url … --values examples/values.json
 ```
 
 ### Body variables
@@ -167,7 +167,7 @@ you can change test data without regenerating the collection or editing
 requests.
 
 ```bash
-mcp2rest2postman generate --url http://localhost:8765/mcp --body-variables \
+mcp2postman generate --url http://localhost:8765/mcp --body-variables \
     --values examples/values.json -o demo.postman_collection.json
 ```
 
@@ -241,7 +241,7 @@ URL, command and credentials on the command line:
 
 ```bash
 export CORECAST_TOKEN=…
-mcp2rest2postman generate --config mcp-config.json --server corecast -o corecast.postman_collection.json
+mcp2postman generate --config mcp-config.json --server corecast -o corecast.postman_collection.json
 ```
 
 * Accepted layouts: `{"mcpServers": {…}}`, VS Code's `{"servers": {…}, "inputs": […]}`,
@@ -266,7 +266,7 @@ To run the collection, expose the server over Streamable HTTP, for example with
 a stdio-to-HTTP bridge, and pass `--base-url` or edit the variable:
 
 ```bash
-mcp2rest2postman generate --stdio "python examples/demo_server.py --stdio" \
+mcp2postman generate --stdio "python examples/demo_server.py --stdio" \
     --base-url http://localhost:8000/mcp
 ```
 
@@ -289,7 +289,7 @@ To store the values in the collection and environment files, use
 
 ```bash
 # once: discover and store the contract
-mcp2rest2postman generate --url $MCP_URL --snapshot-out mcp.snapshot.json -o mcp.postman_collection.json
+mcp2postman generate --url $MCP_URL --snapshot-out mcp.snapshot.json -o mcp.postman_collection.json
 git add mcp.snapshot.json mcp.postman_collection.json mcp.postman_environment.json
 
 # in CI: run the collection against the deployed server
@@ -337,7 +337,7 @@ allows both. The error payload must also be well formed, and the server must
 not answer with a 5xx status.
 
 **Protocol version checks** (`91 Protocol versions`) send one `initialize` per
-version. The server must answer with a version mcp2rest2postman supports, must
+version. The server must answer with a version mcp2postman supports, must
 keep the version that discovery negotiated, and must not echo the unknown
 version `1999-01-01`. Each request opens its own session and doesn't change
 `{{mcpSessionId}}`.

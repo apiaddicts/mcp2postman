@@ -191,7 +191,7 @@ def handle(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
                     "prompts": {},
                 },
                 "serverInfo": SERVER_INFO,
-                "instructions": "Demo server for mcp2rest2postman.",
+                "instructions": "Demo server for mcp2postman.",
             }
         elif method == "ping":
             result = {}

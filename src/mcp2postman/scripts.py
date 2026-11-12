@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Iterable, List, Optional
 
-HELPERS = r"""// --- mcp2rest2postman: decode JSON or SSE body and match the JSON-RPC id ---
+HELPERS = r"""// --- mcp2postman: decode JSON or SSE body and match the JSON-RPC id ---
 const mcp = (() => {
   const body = pm.response.text() || '';
   const ctype = String(pm.response.headers.get('Content-Type') || '').toLowerCase();
@@ -40,7 +40,7 @@ const mcp = (() => {
 })();
 """
 
-COLLECTION_PREREQUEST = r"""// --- mcp2rest2postman: drop empty session / protocol headers ---
+COLLECTION_PREREQUEST = r"""// --- mcp2postman: drop empty session / protocol headers ---
 if (!pm.collectionVariables.get('mcpSessionId') && !pm.variables.get('mcpSessionId')) {
   pm.request.headers.remove('Mcp-Session-Id');
 }
@@ -127,7 +127,7 @@ pm.test('answers with a protocol version', function () {
   pm.expect(negotiated).to.not.eql({_js(requested)});
 }});
 """
-    checks += f"""pm.test('negotiated version is one mcp2rest2postman supports', function () {{
+    checks += f"""pm.test('negotiated version is one mcp2postman supports', function () {{
   pm.expect(negotiated).to.be.oneOf({_js(known)});
 }});
 """
