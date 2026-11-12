@@ -1,5 +1,12 @@
 # mcp2rest2postman
 
+[![PyPI version](https://img.shields.io/pypi/v/mcp2rest2postman.svg)](https://pypi.org/project/mcp2rest2postman/)
+[![Python versions](https://img.shields.io/pypi/pyversions/mcp2rest2postman.svg)](https://pypi.org/project/mcp2rest2postman/)
+[![Downloads](https://static.pepy.tech/badge/mcp2rest2postman/month)](https://pepy.tech/project/mcp2rest2postman)
+[![CI](https://github.com/apiaddicts/mcp2postman/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/apiaddicts/mcp2postman/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/apiaddicts/mcp2postman/blob/main/LICENSE.md)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Turn an **MCP server** (Model Context Protocol) into a **Postman collection** that
 initializes a session, calls every tool, resource and prompt, and **tests the
 responses**. The tests check that responses follow the MCP schema, that the
@@ -34,13 +41,19 @@ MCP server ──(initialize, tools/list, resources/list, prompts/list)──▶
 ## Installation
 
 ```bash
-pip install git+https://github.com/apiaddicts/mcp2rest2postman.git
-# or, from a clone
-pip install -e .
+pip install mcp2rest2postman
 ```
 
 This installs the `mcp2rest2postman` command. You can also run it with
 `python -m mcp2rest2postman`.
+
+To install the latest development version from GitHub, or from a local clone:
+
+```bash
+pip install git+https://github.com/apiaddicts/mcp2postman.git
+# or, from a clone
+pip install -e .
+```
 
 ## Quick start
 
@@ -73,7 +86,7 @@ Tools (3):
 (* = required)
 ```
 
-With the demo server, the generated collection has 38 requests and 150
+With the demo server, the generated collection has 42 requests and 176
 assertions, and all of them pass. `examples/demo.postman_collection.json` is
 an example of the output.
 
@@ -343,7 +356,7 @@ pytest              # unit + integration tests (end-to-end tests run when newman
 ruff check .
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for how the code is organized.
+See [ARCHITECTURE.md](https://github.com/apiaddicts/mcp2postman/blob/main/ARCHITECTURE.md) for how the code is organized.
 
 ## Limitations
 
@@ -358,4 +371,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how the code is organized.
 
 ## License
 
-Apache License 2.0. See [LICENSE.md](LICENSE.md).
+Apache License 2.0. See [LICENSE.md](https://github.com/apiaddicts/mcp2postman/blob/main/LICENSE.md).
+
+Changes between versions are listed in the [changelog](https://github.com/apiaddicts/mcp2postman/blob/main/CHANGELOG.md).

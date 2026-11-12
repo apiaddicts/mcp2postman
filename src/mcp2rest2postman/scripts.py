@@ -112,10 +112,10 @@ def protocol_version_tests(
     requests do not touch ``mcpSessionId`` / ``protocolVersion``.
     """
     known = list(known)
-    checks = f"""const negotiated = mcp.result ? mcp.result.protocolVersion : undefined;
-pm.test('answers with a protocol version', function () {{
+    checks = """const negotiated = mcp.result ? mcp.result.protocolVersion : undefined;
+pm.test('answers with a protocol version', function () {
   pm.expect(negotiated).to.be.a('string').and.not.be.empty;
-}});
+});
 """
     if must_echo:
         checks += f"""pm.test('keeps the requested version {requested} (supported by the server)', function () {{
