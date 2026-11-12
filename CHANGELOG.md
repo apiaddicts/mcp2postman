@@ -15,7 +15,7 @@ First release published on PyPI: `pip install mcp2rest2postman`.
   touching `mcpSessionId`. `--protocol-versions V1,V2` (or `none`) selects the
   versions, and `--no-protocol-tests` also skips the folder. (SA-3290)
 - Package metadata for PyPI: project URLs, supported Python versions
-  (3.9 to 3.13) and a source distribution that includes the tests and
+  (3.10 to 3.13) and a source distribution that includes the tests and
   examples.
 
 ### Changed
@@ -25,6 +25,10 @@ First release published on PyPI: `pip install mcp2rest2postman`.
   with `--no-negative-tests`, are left out. (SA-3277)
 - The README installs from PyPI and uses absolute links, so it renders on the
   PyPI project page.
+
+### Removed
+- Python 3.9 support. It reached end of life in October 2025 and is no longer
+  available on the CI runners. Python 3.10 or later is required.
 
 ## 0.2.0 - 2026-11-05
 

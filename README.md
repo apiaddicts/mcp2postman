@@ -35,7 +35,7 @@ MCP server ──(initialize, tools/list, resources/list, prompts/list)──▶
   prompt argument values move from the request bodies into that environment.
 * **Detects drift.** `tools/list` and `prompts/list` fail when a tool or prompt
   disappears or its input schema changes after the collection was generated.
-* Has no runtime dependencies (Python ≥ 3.9 standard library only).
+* Has no runtime dependencies (Python ≥ 3.10 standard library only).
 * Licensed under Apache 2.0.
 
 ## Installation

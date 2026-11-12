@@ -9,7 +9,7 @@ description = "Convert an MCP server (Streamable HTTP or stdio) into a Postman c
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE.md"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "APIAddicts", email = "devrel@apiaddicts.org" }]
 keywords = ["mcp", "model-context-protocol", "postman", "testing", "json-rpc", "cli"]
 classifiers = [
@@ -19,7 +19,6 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -49,7 +48,7 @@ addopts = "-ra"
 
 [tool.ruff]
 line-length = 130
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]
