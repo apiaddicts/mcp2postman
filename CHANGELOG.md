@@ -1,6 +1,36 @@
 # Changelog
 
-## 0.2.0
+## 1.0.0 - 2026-11-11
+
+First release published on PyPI: `pip install mcp2rest2postman`.
+
+### Added
+- Support for MCP protocol versions `2026-07-28`, `2025-11-25` and
+  `2025-06-18`. Discovery proposes the newest one and, when a server rejects
+  it with an error instead of negotiating, retries with the next older one.
+  Connection failures are not retried. A negotiated version outside the list
+  is reported as a snapshot warning. (SA-3290)
+- New "91 Protocol versions" folder: one `initialize` per version plus an
+  unknown version (`1999-01-01`), checking the negotiation rules without
+  touching `mcpSessionId`. `--protocol-versions V1,V2` (or `none`) selects the
+  versions, and `--no-protocol-tests` also skips the folder. (SA-3290)
+- Package metadata for PyPI: project URLs, supported Python versions
+  (3.10 to 3.13) and a source distribution that includes the tests and
+  examples.
+
+### Changed
+- Each `tool: <name>` folder now holds one subfolder per test kind
+  ("valid", "missing required -> error", "wrong type -> error"), so a single
+  kind of test can be run or reviewed on its own. Empty kinds, for example
+  with `--no-negative-tests`, are left out. (SA-3277)
+- The README installs from PyPI and uses absolute links, so it renders on the
+  PyPI project page.
+
+### Removed
+- Python 3.9 support. It reached end of life in October 2025 and is no longer
+  available on the CI runners. Python 3.10 or later is required.
+
+## 0.2.0 - 2026-11-05
 
 ### Added
 - `--body-variables`: tool and prompt argument values move from request

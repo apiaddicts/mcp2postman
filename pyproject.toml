@@ -4,20 +4,25 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp2rest2postman"
-version = "0.2.0"
+version = "1.0.0"
 description = "Convert an MCP server (Streamable HTTP or stdio) into a Postman collection with contract, required and optional attribute tests."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE.md"]
-requires-python = ">=3.9"
-authors = [{ name = "APIAddicts" }]
+requires-python = ">=3.10"
+authors = [{ name = "APIAddicts", email = "devrel@apiaddicts.org" }]
 keywords = ["mcp", "model-context-protocol", "postman", "testing", "json-rpc", "cli"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Software Development :: Testing",
 ]
 dependencies = []
@@ -29,8 +34,10 @@ dev = ["pytest>=7", "ruff>=0.4"]
 mcp2rest2postman = "mcp2rest2postman.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/apiaddicts/mcp2rest2postman"
-Issues = "https://github.com/apiaddicts/mcp2rest2postman/issues"
+Homepage = "https://github.com/apiaddicts/mcp2postman"
+Repository = "https://github.com/apiaddicts/mcp2postman"
+Issues = "https://github.com/apiaddicts/mcp2postman/issues"
+Changelog = "https://github.com/apiaddicts/mcp2postman/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -41,7 +48,7 @@ addopts = "-ra"
 
 [tool.ruff]
 line-length = 130
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]
