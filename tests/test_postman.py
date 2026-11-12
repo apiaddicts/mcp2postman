@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from mcp2rest2postman.discovery import ServerSnapshot
-from mcp2rest2postman.postman import (
+from mcp2postman.discovery import ServerSnapshot
+from mcp2postman.postman import (
     POSTMAN_SCHEMA,
     GeneratorOptions,
     build_collection,

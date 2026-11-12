@@ -3,9 +3,9 @@ import sys
 
 import pytest
 
-from mcp2rest2postman import cli
-from mcp2rest2postman.cli import main
-from mcp2rest2postman.config import ConfigError, load_server
+from mcp2postman import cli
+from mcp2postman.cli import main
+from mcp2postman.config import ConfigError, load_server
 
 from conftest import DEMO_SERVER
 

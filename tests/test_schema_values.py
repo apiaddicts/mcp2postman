@@ -1,6 +1,6 @@
 import re
 
-from mcp2rest2postman.schema_values import (
+from mcp2postman.schema_values import (
     is_missing,
     primary_type,
     required_and_optional,

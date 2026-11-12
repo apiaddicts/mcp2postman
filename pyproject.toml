@@ -3,7 +3,7 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mcp2rest2postman"
+name = "mcp2postman"
 version = "1.0.0"
 description = "Convert an MCP server (Streamable HTTP or stdio) into a Postman collection with contract, required and optional attribute tests."
 readme = "README.md"
@@ -31,7 +31,7 @@ dependencies = []
 dev = ["pytest>=7", "ruff>=0.4"]
 
 [project.scripts]
-mcp2rest2postman = "mcp2rest2postman.cli:main"
+mcp2postman = "mcp2postman.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/apiaddicts/mcp2postman"
@@ -54,8 +54,8 @@ target-version = "py310"
 select = ["E", "F", "W", "I", "B"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["mcp2rest2postman"]
+known-first-party = ["mcp2postman"]
 known-local-folder = ["helpers", "conftest", "demo_server"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/mcp2rest2postman/scripts.py" = ["E501"]
+"src/mcp2postman/scripts.py" = ["E501"]

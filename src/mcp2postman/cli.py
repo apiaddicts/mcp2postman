@@ -1,4 +1,4 @@
-"""Command line interface: ``mcp2rest2postman``."""
+"""Command line interface: ``mcp2postman``."""
 
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ def _add_source_args(parser: argparse.ArgumentParser, allow_snapshot: bool) -> N
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="mcp2rest2postman",
+        prog="mcp2postman",
         description="Turn an MCP server into a Postman collection with contract and negative tests.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")

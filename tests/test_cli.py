@@ -1,7 +1,7 @@
 import json
 import sys
 
-from mcp2rest2postman.cli import main
+from mcp2postman.cli import main
 
 from conftest import DEMO_SERVER
 from helpers import by_name
@@ -21,7 +21,7 @@ def test_generate_from_url(tmp_path, json_url, capsys):
     col = json.loads(out.read_text())
     assert {v["key"]: v["value"] for v in col["variable"]}["baseUrl"] == json_url
     assert "add - valid, all attributes" in by_name(col)
-    assert json.loads(snap.read_text())["format"] == "mcp2rest2postman/snapshot@1"
+    assert json.loads(snap.read_text())["format"] == "mcp2postman/snapshot@1"
     assert json.loads(env.read_text())["values"][1]["key"] == "header_x_api_key"
     assert "requests" in capsys.readouterr().err
 

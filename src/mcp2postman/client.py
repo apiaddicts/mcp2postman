@@ -32,8 +32,8 @@ SUPPORTED_PROTOCOL_VERSIONS = ("2026-07-28", "2025-11-25", "2025-06-18")
 #: Proposed during ``initialize``. Per the spec, a server that does not support
 #: it answers with another version it supports, so proposing the newest is safe.
 DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]
-CLIENT_INFO = {"name": "mcp2rest2postman", "version": __version__}
-USER_AGENT = f"mcp2rest2postman/{__version__}"
+CLIENT_INFO = {"name": "mcp2postman", "version": __version__}
+USER_AGENT = f"mcp2postman/{__version__}"
 
 
 class MCPError(Exception):

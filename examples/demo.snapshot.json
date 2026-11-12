@@ -12,7 +12,7 @@
     "resources": {},
     "prompts": {}
   },
-  "instructions": "Demo server for mcp2rest2postman.",
+  "instructions": "Demo server for mcp2postman.",
   "tools": [
     {
       "name": "add",
@@ -147,5 +147,5 @@
     "url": "http://localhost:8765/mcp"
   },
   "warnings": [],
-  "format": "mcp2rest2postman/snapshot@1"
+  "format": "mcp2postman/snapshot@1"
 }

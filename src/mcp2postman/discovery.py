@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from .client import SUPPORTED_PROTOCOL_VERSIONS, ConnectionFailed, MCPClient, MCPError, Transport
 
-SNAPSHOT_FORMAT = "mcp2rest2postman/snapshot@1"
+SNAPSHOT_FORMAT = "mcp2postman/snapshot@1"
 
 
 @dataclass
@@ -96,7 +96,7 @@ def discover(
     )
     if snapshot.protocol_version not in SUPPORTED_PROTOCOL_VERSIONS:
         snapshot.warnings.append(
-            f"server negotiated protocol {snapshot.protocol_version}, which mcp2rest2postman does not "
+            f"server negotiated protocol {snapshot.protocol_version}, which mcp2postman does not "
             f"know (supported: {', '.join(SUPPORTED_PROTOCOL_VERSIONS)}); generated checks may not match it"
         )
     log(
